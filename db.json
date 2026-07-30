@@ -21,7 +21,354 @@
       "createdAt": "2026-07-30T15:24:12.768Z"
     }
   ],
-  "products": [],
+  "products": [
+    {
+      "id": "prod_1",
+      "name": "Chronos Neon Edition Smartwatch",
+      "description": "The ultimate lifestyle wrist accessory featuring a stunning 1.95-inch AMOLED curved display, real-time blood-oxygen monitoring, advanced stress analysis, and built-in premium speaker for Bluetooth calls.",
+      "price": 2999,
+      "originalPrice": 5999,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Chronos Neon Smartwatch"
+        },
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": false,
+          "name": "Smartwatch Side View"
+        }
+      ],
+      "category": "Hot Deals",
+      "subCategory": "Electronics",
+      "rating": 4.8,
+      "reviewsCount": 124,
+      "stock": 45,
+      "delivery": "Free Delivery by Sunday",
+      "warranty": "1 Year Domestic Warranty",
+      "seller": "Chronos India Tech",
+      "specifications": {
+        "Display": "1.95\" AMOLED Curved Screen",
+        "Battery Life": "Up to 10 Days",
+        "Waterproof": "IP68 Certified",
+        "Sensors": "Heart Rate, SpO2, Sleep, Pedometer"
+      },
+      "reviewsList": [
+        {
+          "user": "Rahul S.",
+          "rating": 5,
+          "comment": "Absolutely marvelous battery life! Highly recommended.",
+          "date": "2026-06-15"
+        },
+        {
+          "user": "Sneha P.",
+          "rating": 4.5,
+          "comment": "Screen looks super high-end, touch response is amazing.",
+          "date": "2026-07-02"
+        }
+      ]
+    },
+    {
+      "id": "prod_2",
+      "name": "Vortex Spatial Audio Headphones",
+      "description": "Immerse yourself completely with state-of-the-art hybrid Active Noise Cancellation (up to 42dB) and full 360-degree spatial audio tracking. Crafted with memory-foam ear cushions for professional, long-duration listening sessions.",
+      "price": 4599,
+      "originalPrice": 8999,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Vortex Headphones"
+        }
+      ],
+      "category": "Trending",
+      "subCategory": "Electronics",
+      "rating": 4.9,
+      "reviewsCount": 88,
+      "stock": 30,
+      "delivery": "Free Delivery tomorrow",
+      "warranty": "2 Years Replacement Warranty",
+      "seller": "Vortex Sound Labs",
+      "specifications": {
+        "Noise Cancelling": "Hybrid ANC (42dB)",
+        "Playtime": "Up to 50 Hours",
+        "Driver": "40mm Dynamic Driver",
+        "Bluetooth": "Version 5.3"
+      },
+      "reviewsList": [
+        {
+          "user": "Aman V.",
+          "rating": 5,
+          "comment": "Best ANC headphones in this price category! Pure studio-grade sound.",
+          "date": "2026-07-10"
+        }
+      ]
+    },
+    {
+      "id": "prod_3",
+      "name": "Noir Minimalist Leather Wallet",
+      "description": "Handcrafted from full-grain vegetable-tanned genuine leather. Features 6 card slots, a quick-access cash sleeve, and built-in advanced RFID block security keeping your sensitive digital cards safe.",
+      "price": 999,
+      "originalPrice": 1999,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1627123424574-724758594e93?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Noir Wallet"
+        }
+      ],
+      "category": "General",
+      "subCategory": "Accessories",
+      "rating": 4.5,
+      "reviewsCount": 230,
+      "stock": 120,
+      "delivery": "Delivery in 3 days",
+      "warranty": "6 Months Stitching Warranty",
+      "seller": "Noir Craftwear",
+      "specifications": {
+        "Material": "100% Full-Grain Vegetable-Tanned Leather",
+        "Card Slots": "6 Slots + 1 ID Window",
+        "Security": "RFID Blocking Technology",
+        "Dimensions": "11cm x 8cm x 1.5cm"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_4",
+      "name": "Aero-Knit Prime Running Shoes",
+      "description": "Ultra-breathable weave pattern combined with an engineered responsive air-cushion sole. Designed to absorb vertical shock and deliver maximum energy return for high-performance marathons or casual jogs.",
+      "price": 2499,
+      "originalPrice": 4999,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Aero Running Shoes"
+        }
+      ],
+      "category": "Trending",
+      "subCategory": "Sports",
+      "rating": 4.6,
+      "reviewsCount": 154,
+      "stock": 18,
+      "delivery": "Free Delivery tomorrow",
+      "warranty": "3 Months Warranty against Manufacturing Defects",
+      "seller": "Aero Sports Ltd",
+      "specifications": {
+        "Upper Material": "Fly-Knit Polyester Mesh",
+        "Sole": "Reactive Polymer Cushion Sole",
+        "Weight": "240g (Single Shoe)",
+        "Ankle Fit": "Sock-Like Elastic Knit"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_5",
+      "name": "Glow Radiance Vitamin C Serum",
+      "description": "Infused with 15% pure ethyl ascorbic acid, vitamin E, and natural hyaluronic acid. Revitalizes dull skin tone, stimulates collagen synthesis, and diminishes blemishes for a luminous, hydrated complexion.",
+      "price": 699,
+      "originalPrice": 1299,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Vitamin C Serum"
+        }
+      ],
+      "category": "Hot Deals",
+      "subCategory": "Beauty",
+      "rating": 4.4,
+      "reviewsCount": 310,
+      "stock": 75,
+      "delivery": "Delivery in 2 days",
+      "warranty": "100% Cruelty Free & Dermatologically Tested",
+      "seller": "Glow Aesthetics",
+      "specifications": {
+        "Volume": "30ml e",
+        "Skin Type": "Suitable for All Skin Types",
+        "Fragrance": "Fragrance-Free Formulation",
+        "Key Ingredients": "15% Vitamin C, Hyaluronic Acid, Vitamin E"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_6",
+      "name": "Elysian Ceramic Coffee Dripper",
+      "description": "Artisanal double-walled heat-retaining ceramic dripper. Perfect for brewing barista-grade pour-over coffee. Promotes balanced extraction for a smoother, richer profile with standard conical filters.",
+      "price": 1299,
+      "originalPrice": 2499,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Coffee Dripper"
+        }
+      ],
+      "category": "General",
+      "subCategory": "Home",
+      "rating": 4.7,
+      "reviewsCount": 42,
+      "stock": 25,
+      "delivery": "Delivery in 3 days",
+      "warranty": "Shatter-Resistant Ceramic Quality",
+      "seller": "Elysian Brew Co.",
+      "specifications": {
+        "Material": "Double-Walled Kiln Ceramic",
+        "Capacity": "1-4 Cups",
+        "Filter Type": "V60 Conical Paper Filters",
+        "Dishwasher Safe": "Yes"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_7",
+      "name": "Atomic Habits - Hardcover Premium",
+      "description": "The multi-million copy bestseller by James Clear. An incredibly practical guide that teaches easy ways to build good habits and break bad ones, drawing on proven scientific principles of behavioral psychology.",
+      "price": 499,
+      "originalPrice": 799,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "James Clear Atomic Habits"
+        }
+      ],
+      "category": "Trending",
+      "subCategory": "Books",
+      "rating": 4.9,
+      "reviewsCount": 450,
+      "stock": 80,
+      "delivery": "Delivery in 2 days",
+      "warranty": "100% Original Paperback Edition",
+      "seller": "Readings Bookstore",
+      "specifications": {
+        "Author": "James Clear",
+        "Pages": "320 Pages",
+        "Publisher": "Penguin Books Ltd",
+        "Language": "English"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_8",
+      "name": "Organic Matcha Green Tea Powder",
+      "description": "Directly imported from Uji, Kyoto. Ceremonial grade pure organic green tea matcha stone-ground to perfection. Packed with incredible antioxidants, ready for authentic tea ceremonies or healthy lattes.",
+      "price": 1499,
+      "originalPrice": 2499,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Ceremonial Matcha Powder"
+        }
+      ],
+      "category": "Hot Deals",
+      "subCategory": "Groceries",
+      "rating": 4.8,
+      "reviewsCount": 65,
+      "stock": 50,
+      "delivery": "Delivery in 3 days",
+      "warranty": "FSSAI & USDA Organic Certified",
+      "seller": "Kyoto Organic Imports",
+      "specifications": {
+        "Weight": "100g Zip-Lock Pouch",
+        "Origin": "Kyoto, Japan",
+        "Grade": "Uji Ceremonial Grade",
+        "Shelf Life": "12 Months"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_9",
+      "name": "Prism Sleek Fit Cotton Blazer",
+      "description": "A tailored premium blazer made from breathable organic cotton linen. Styled with subtle lapels and premium resin buttons. Perfect for semi-formal brunches or important business meets.",
+      "price": 3499,
+      "originalPrice": 6999,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Tailored Cotton Blazer"
+        }
+      ],
+      "category": "Trending",
+      "subCategory": "Fashion",
+      "rating": 4.6,
+      "reviewsCount": 94,
+      "stock": 15,
+      "delivery": "Free Delivery by Saturday",
+      "warranty": "Color-Fastness & Fabric Quality Assured",
+      "seller": "Prism Clothing Hub",
+      "specifications": {
+        "Fabric": "70% Organic Cotton, 30% Linen Blend",
+        "Fit": "Tailored Sleek Fit",
+        "Collar Style": "Notched Lapel",
+        "Pockets": "2 Front Flap, 1 Internal Chest"
+      },
+      "reviewsList": []
+    },
+    {
+      "id": "prod_vsaaxv0gl",
+      "name": "shop",
+      "description": "super",
+      "price": 1001,
+      "originalPrice": 1001,
+      "images": [
+        {
+          "type": "upload",
+          "url": "/uploads/product-1785425807932-983498180.png",
+          "isPrimary": true,
+          "name": "Screenshot 2025-08-16 005630.png",
+          "size": 818166
+        }
+      ],
+      "category": "General",
+      "subCategory": "Electronics",
+      "rating": 5,
+      "reviewsCount": 0,
+      "reviewsList": [],
+      "stock": 20,
+      "delivery": "Free Delivery",
+      "warranty": "1 Year Standard Warranty",
+      "seller": "Scratch Authorized Partner",
+      "specifications": {}
+    },
+    {
+      "id": "prod_zyz14fyw8",
+      "name": "Sample Prod",
+      "price": 199,
+      "originalPrice": null,
+      "images": [
+        {
+          "type": "url",
+          "url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop",
+          "isPrimary": true,
+          "name": "Default Product Image"
+        }
+      ],
+      "category": "General",
+      "subCategory": "Electronics",
+      "rating": 5,
+      "reviewsCount": 0,
+      "reviewsList": [],
+      "stock": 10,
+      "delivery": "Free Delivery",
+      "warranty": "1 Year Warranty",
+      "seller": "Certified Merchant",
+      "specifications": {}
+    }
+  ],
   "orders": [],
   "scratchCards": [
     {

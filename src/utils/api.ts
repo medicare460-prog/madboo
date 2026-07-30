@@ -56,7 +56,13 @@ export const fetchWithRetry = async (
       const res = await fetch(urlToFetch, options);
 
       if (res.ok) {
-        return res;
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
+          console.warn(`[API Fetch] Endpoint ${urlToFetch} returned HTML instead of JSON. Retrying or falling back.`);
+          lastError = new Error(`Server returned HTML (SPA fallback) instead of JSON for endpoint ${endpoint}`);
+        } else {
+          return res;
+        }
       }
 
       // If status is 404 on attempt 0 for product routes, retry with alternative path alias
