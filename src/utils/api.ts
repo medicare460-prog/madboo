@@ -23,6 +23,11 @@ export const getApiUrl = (endpoint: string): string => {
       return cleanPath;
     }
 
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && envBase.startsWith("http://")) {
+      console.warn(`[API Utility] Ignoring http base URL (${envBase}) on https page. Using relative endpoint: ${cleanPath}`);
+      return cleanPath;
+    }
+
     const cleanBase = envBase.replace(/\/+$/, "");
     return `${cleanBase}${cleanPath}`;
   }
@@ -33,7 +38,7 @@ export const getApiUrl = (endpoint: string): string => {
 export const fetchWithRetry = async (
   endpoint: string,
   options?: RequestInit,
-  maxRetries = 2
+  maxRetries = 3
 ): Promise<Response> => {
   const primaryUrl = getApiUrl(endpoint);
   let lastError: any = null;
@@ -55,15 +60,20 @@ export const fetchWithRetry = async (
       }
 
       // If status is 404 on attempt 0 for product routes, retry with alternative path alias
-      if (res.status === 404 && endpoint.startsWith("/api/products")) {
-        const fallbackEndpoint =
-          endpoint === "/api/products"
-            ? "/products"
-            : endpoint.replace("/api/products", "/products");
-        console.warn(`[API Fetch] Received 404 on ${primaryUrl}. Retrying with alias endpoint ${fallbackEndpoint}...`);
-        const fallbackRes = await fetch(fallbackEndpoint, options);
-        if (fallbackRes.ok) {
-          return fallbackRes;
+      if (res.status === 404 && (endpoint.includes("/products") || endpoint.includes("/api/products"))) {
+        const fallbacks = ["/api/products", "/products", "/api/catalog", "/api/products/all"];
+        for (const fb of fallbacks) {
+          if (fb !== endpoint) {
+            try {
+              const fbRes = await fetch(fb, options);
+              if (fbRes.ok) {
+                console.log(`[API Fetch] Successfully resolved product catalog using fallback endpoint: ${fb}`);
+                return fbRes;
+              }
+            } catch (e) {
+              // Ignore inner fallback error
+            }
+          }
         }
       }
 
@@ -79,5 +89,16 @@ export const fetchWithRetry = async (
     }
   }
 
+  // Fallback try with raw relative path if endpoint is product-related
+  if (endpoint.includes("products")) {
+    try {
+      const directRes = await fetch("/api/products");
+      if (directRes.ok) return directRes;
+    } catch (e) {
+      // Ignore
+    }
+  }
+
   throw lastError || new Error(`Failed to fetch ${endpoint} after ${maxRetries} attempts`);
 };
+

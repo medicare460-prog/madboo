@@ -34,6 +34,7 @@ import CheckoutPayment from "./components/CheckoutPayment.js";
 import { OrderSuccess } from "./components/OrderSuccess.js";
 import { Product, User, Order, ScratchCard, Transaction, Coupon, Notification, WinnerHistory, getProductMainImage, handleImageError } from "./types.js";
 import { getApiUrl, fetchWithRetry } from "./utils/api.js";
+import { io } from "socket.io-client";
 
 export default function App() {
   // Navigation & View States
@@ -103,19 +104,25 @@ export default function App() {
   // FETCHERS & INITIALIZERS
   // ==========================================
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (attempt = 0) => {
     setProductsLoading(true);
     setProductsError(null);
     try {
       const res = await fetchWithRetry("/api/products");
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
           const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
           const dynamicLimit = Math.max(maxP + 1000, 10000);
           setMaxPriceLimit(dynamicLimit);
           setPriceFilter(prev => Math.max(prev, dynamicLimit));
+          setProductsLoading(false);
+          return;
+        } else if (Array.isArray(data)) {
+          setProducts(data);
+          setProductsLoading(false);
+          return;
         } else {
           console.error("[PROD CATALOG] API returned non-array payload:", data);
           setProductsError("Received invalid product data format from production server");
@@ -127,6 +134,11 @@ export default function App() {
       }
     } catch (e: any) {
       console.error("[PROD CATALOG] Network error fetching products:", e);
+      if (attempt < 2) {
+        console.log(`[PROD CATALOG] Auto-retrying fetchProducts (Attempt ${attempt + 1})...`);
+        setTimeout(() => fetchProducts(attempt + 1), 800);
+        return;
+      }
       setProductsError(e?.message || "Failed to load products from production server");
     } finally {
       setProductsLoading(false);
@@ -228,12 +240,33 @@ export default function App() {
     fetchProducts();
     fetchWinners();
 
+    // Setup Socket.IO for instant live updates across clients when admin updates products
+    const socket = io();
+    socket.on("products_updated", (updatedProducts: Product[]) => {
+      console.log("[Socket.IO] Real-time products_updated event received!");
+      if (Array.isArray(updatedProducts) && updatedProducts.length > 0) {
+        setProducts(updatedProducts);
+      } else {
+        fetchProducts();
+      }
+    });
+
+    // Background revalidation
+    const interval = setInterval(() => {
+      fetchProducts();
+    }, 12000);
+
     // Auto load session token from local storage
     const storedToken = localStorage.getItem("scratch_user_token");
     if (storedToken) {
       setToken(storedToken);
       fetchUserData(storedToken);
     }
+
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   // Sync winners ticker periodically (long-polling simulation)

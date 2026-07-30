@@ -202,6 +202,47 @@ app.post("/api/auth/login", (req: Request, res: Response) => {
   });
 });
 
+// Login Alias
+app.post("/api/login", (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "Missing email or password" });
+  }
+
+  const db = loadDB();
+  const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (!user || user.passwordHash !== password) {
+    return res.status(400).json({ message: "Invalid email or password" });
+  }
+
+  res.status(200).json({
+    message: "Login successful",
+    token: user.id,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      coinBalance: user.coinBalance,
+      cashbackBalance: user.cashbackBalance
+    }
+  });
+});
+
+// Categories API
+app.get("/api/categories", (req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  try {
+    const db = loadDB();
+    const products = db.products || [];
+    const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    const subCategories = Array.from(new Set(products.map(p => p.subCategory).filter(Boolean)));
+    res.status(200).json({ categories, subCategories });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
 app.get("/api/auth/me", authMiddleware, (req: AuthRequest, res: Response) => {
   const user = req.user!;
   res.status(200).json({
@@ -1139,7 +1180,23 @@ app.post("/api/admin/upload", adminMiddleware, (req: Request, res: Response, nex
 });
 
 // Admin Products API
-app.post("/api/admin/products/add", adminMiddleware, (req: Request, res: Response) => {
+app.get("/api/admin/products", (req: Request, res: Response) => {
+  handleGetProducts(req, res);
+});
+
+function notifyProductsChanged() {
+  try {
+    const db = loadDB();
+    if ((global as any).io) {
+      console.log("[Socket.IO] Broadcasting products_updated event to all connected clients...");
+      (global as any).io.emit("products_updated", db.products || []);
+    }
+  } catch (err) {
+    console.error("[Socket.IO] Error broadcasting products update:", err);
+  }
+}
+
+const handleAddProduct = (req: Request, res: Response) => {
   const productData = req.body;
   
   let images: Product["images"] = [];
@@ -1200,10 +1257,15 @@ app.post("/api/admin/products/add", adminMiddleware, (req: Request, res: Respons
     db.products.push(newProduct);
   });
 
-  res.status(201).json({ message: "Product created successfully", product: newProduct });
-});
+  notifyProductsChanged();
 
-app.post("/api/admin/products/edit/:id", adminMiddleware, (req: Request, res: Response) => {
+  res.status(201).json({ message: "Product created successfully", product: newProduct });
+};
+
+app.post("/api/admin/products/add", adminMiddleware, handleAddProduct);
+app.post("/api/products", authMiddleware, handleAddProduct);
+
+const handleEditProduct = (req: Request, res: Response) => {
   const productId = req.params.id;
   const productData = req.body;
 
@@ -1256,16 +1318,27 @@ app.post("/api/admin/products/edit/:id", adminMiddleware, (req: Request, res: Re
     }
   });
 
-  res.status(200).json({ message: "Product updated successfully" });
-});
+  notifyProductsChanged();
 
-app.post("/api/admin/products/delete/:id", adminMiddleware, (req: Request, res: Response) => {
+  res.status(200).json({ message: "Product updated successfully" });
+};
+
+app.post("/api/admin/products/edit/:id", adminMiddleware, handleEditProduct);
+app.put("/api/products/:id", authMiddleware, handleEditProduct);
+
+const handleDeleteProduct = (req: Request, res: Response) => {
   const productId = req.params.id;
   updateDB(db => {
     db.products = db.products.filter(p => p.id !== productId);
   });
+
+  notifyProductsChanged();
+
   res.status(200).json({ message: "Product deleted successfully" });
-});
+};
+
+app.post("/api/admin/products/delete/:id", adminMiddleware, handleDeleteProduct);
+app.delete("/api/products/:id", authMiddleware, handleDeleteProduct);
 
 
 // ==========================================

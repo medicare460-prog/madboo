@@ -27,6 +27,7 @@ import {
   X
 } from "lucide-react";
 import { Product, Order, AdminSettings, User, ScratchCard, ProductImage, getProductMainImage, handleImageError, getProductImageUrl } from "../types.js";
+import { fetchWithRetry } from "../utils/api.js";
 
 interface AdminPanelProps {
   token: string;
@@ -68,7 +69,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/dashboard-stats", {
+      const res = await fetchWithRetry("/api/admin/dashboard-stats", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -84,7 +85,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/admin/settings", {
+      const res = await fetchWithRetry("/api/admin/settings", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -98,7 +99,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/admin/orders", {
+      const res = await fetchWithRetry("/api/admin/orders", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -112,7 +113,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await fetchWithRetry("/api/admin/users", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -173,7 +174,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
   const handleDeleteProduct = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
-      const res = await fetch(`/api/admin/products/delete/${id}`, {
+      const res = await fetchWithRetry(`/api/admin/products/delete/${id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -181,7 +182,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
         onRefreshProducts();
       }
     } catch (err) {
-      console.error(err);
+      console.error("Delete product error:", err);
     }
   };
 
@@ -252,7 +253,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
       : `/api/admin/products/edit/${editingProduct?.id}`;
 
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithRetry(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -267,7 +268,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
         onRefreshProducts();
       }
     } catch (err) {
-      console.error(err);
+      console.error("Save product error:", err);
     }
   };
 
@@ -339,7 +340,7 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
     }
 
     try {
-      const res = await fetch("/api/admin/upload", {
+      const res = await fetchWithRetry("/api/admin/upload", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`
