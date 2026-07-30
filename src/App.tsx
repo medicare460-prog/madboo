@@ -52,10 +52,14 @@ export default function App() {
 
   // Catalog State
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(""); // subCategory filter e.g. Electronics
   const [badgeFilter, setBadgeFilter] = useState(""); // e.g. "General" | "Trending" | "Hot Deals"
-  const [priceFilter, setPriceFilter] = useState(6000);
+  const [priceFilter, setPriceFilter] = useState(50000);
+  const [maxPriceLimit, setMaxPriceLimit] = useState(50000);
+  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "rating">("featured");
 
   // Shopping States
   const [cart, setCart] = useState<{ productId: string; quantity: number }[]>([]);
@@ -99,14 +103,32 @@ export default function App() {
   // ==========================================
 
   const fetchProducts = async () => {
+    setProductsLoading(true);
+    setProductsError(null);
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch(`/api/products?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
-        setProducts(data);
+        if (Array.isArray(data)) {
+          setProducts(data);
+          const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
+          const dynamicLimit = Math.max(maxP + 1000, 10000);
+          setMaxPriceLimit(dynamicLimit);
+          setPriceFilter(prev => Math.max(prev, dynamicLimit));
+        } else {
+          console.error("[PROD CATALOG] API returned non-array payload:", data);
+          setProductsError("Received invalid product data format from production server");
+        }
+      } else {
+        const errText = await res.text();
+        console.error(`[PROD CATALOG] HTTP ${res.status} error fetching products:`, errText);
+        setProductsError(`Server error HTTP ${res.status}`);
       }
-    } catch (e) {
-      console.error("Products load failed", e);
+    } catch (e: any) {
+      console.error("[PROD CATALOG] Network error fetching products:", e);
+      setProductsError(e?.message || "Failed to load products from production server");
+    } finally {
+      setProductsLoading(false);
     }
   };
 
@@ -506,17 +528,28 @@ export default function App() {
     }
   };
 
-  // Filter products list
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter ? p.subCategory === categoryFilter : true;
-    const matchesBadge = badgeFilter ? p.category === badgeFilter : true;
-    const matchesPrice = p.price <= priceFilter;
+  // Filter & Sort products list
+  const filteredProducts = products
+    .filter((p) => {
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.subCategory.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q);
+      const matchesCategory = categoryFilter ? p.subCategory === categoryFilter : true;
+      const matchesBadge = badgeFilter ? p.category === badgeFilter : true;
+      const matchesPrice = p.price <= priceFilter;
 
-    return matchesSearch && matchesCategory && matchesBadge && matchesPrice;
-  });
+      return matchesSearch && matchesCategory && matchesBadge && matchesPrice;
+    })
+    .sort((a, b) => {
+      if (sortBy === "price-asc") return a.price - b.price;
+      if (sortBy === "price-desc") return b.price - a.price;
+      if (sortBy === "rating") return b.rating - a.rating;
+      return 0; // "featured"
+    });
 
   const subtotal = calculateSubtotal();
   const discount = appliedCoupon ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) : 0;
@@ -1210,7 +1243,7 @@ export default function App() {
                 <h3 className="text-xl font-display font-extrabold text-slate-100 flex items-center gap-1.5">
                   <SlidersHorizontal className="h-5 w-5 text-blue-500" /> Explore Catalog Collections
                 </h3>
-                <p className="text-slate-400 text-xs mt-1">Filter by category collections, hot badges, and price margins.</p>
+                <p className="text-slate-400 text-xs mt-1">Filter by category collections, hot badges, price range, and sorting.</p>
               </div>
 
               {/* Instant Category Buttons */}
@@ -1237,14 +1270,14 @@ export default function App() {
               </div>
             </div>
 
-            {/* Price & Badge layout filter bar */}
+            {/* Price & Badge & Sort filter bar */}
             <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap gap-4 items-center mb-8 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Badge Filter:</span>
+                <span className="text-slate-400 font-medium">Badge:</span>
                 <select
                   value={badgeFilter}
                   onChange={(e) => setBadgeFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-slate-200 outline-none"
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 outline-none cursor-pointer focus:border-blue-500"
                 >
                   <option value="">Any Badges</option>
                   <option value="General">General</option>
@@ -1253,97 +1286,183 @@ export default function App() {
                 </select>
               </div>
 
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium">Sort By:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 outline-none cursor-pointer focus:border-blue-500"
+                >
+                  <option value="featured">Featured First</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                </select>
+              </div>
+
               <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                <span className="text-slate-400 whitespace-nowrap">Price limit:</span>
+                <span className="text-slate-400 whitespace-nowrap font-medium">Price limit:</span>
                 <input
                   type="range"
                   min={100}
-                  max={6000}
+                  max={maxPriceLimit}
                   step={100}
                   value={priceFilter}
                   onChange={(e) => setPriceFilter(Number(e.target.value))}
-                  className="flex-1 accent-blue-500 bg-slate-950 h-1 rounded-full cursor-pointer"
+                  className="flex-1 accent-blue-500 bg-slate-950 h-1.5 rounded-full cursor-pointer"
                 />
-                <span className="font-mono text-emerald-400 font-bold">₹{priceFilter}</span>
+                <span className="font-mono text-emerald-400 font-bold whitespace-nowrap">₹{priceFilter}</span>
               </div>
-            </div>
 
-            {/* Products grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredProducts.map((p) => (
-                <div
-                  key={p.id}
-                  className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden hover:border-blue-500/20 transition duration-300 flex flex-col justify-between"
+              {(searchQuery || categoryFilter || badgeFilter || priceFilter < maxPriceLimit || sortBy !== "featured") && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCategoryFilter("");
+                    setBadgeFilter("");
+                    setPriceFilter(maxPriceLimit);
+                    setSortBy("featured");
+                  }}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer"
                 >
-                  <div className="h-44 bg-slate-900 relative overflow-hidden">
-                    <img
-                      src={getProductMainImage(p)}
-                      alt={p.name}
-                      onError={(e) => handleImageError(e, p.name)}
-                      onClick={() => setSelectedProduct(p)}
-                      className="w-full h-full object-cover cursor-pointer hover:scale-102 transition duration-300"
-                    />
-                    <span className="absolute top-2.5 left-2.5 bg-blue-600/90 text-white text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded shadow">
-                      {p.category}
-                    </span>
-                    <button
-                      onClick={() => handleToggleWishlist(p.id)}
-                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-full border border-slate-800 transition cursor-pointer ${
-                        wishlist.includes(p.id) ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-slate-950/80 text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      <Heart className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4
-                        onClick={() => setSelectedProduct(p)}
-                        className="font-bold font-display text-slate-100 text-sm hover:text-blue-400 transition cursor-pointer line-clamp-1"
-                      >
-                        {p.name}
-                      </h4>
-                      <p className="text-[10px] text-slate-500 font-mono mt-0.5 uppercase">{p.subCategory}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="flex items-center text-[10px] text-amber-400">
-                          <Star className="h-3 w-3 fill-amber-400 mr-0.5" /> {p.rating}
-                        </span>
-                        <span className="text-[10px] text-slate-500">({p.reviewsCount} reviews)</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 border-t border-slate-800/40 pt-3">
-                      <div className="flex justify-between items-baseline mb-3">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-md font-bold text-emerald-400 font-mono">₹{p.price}</span>
-                          <span className="text-[10px] text-slate-500 line-through font-mono">₹{p.originalPrice}</span>
-                        </div>
-                        <span className="text-[9px] text-slate-500 font-mono">{p.stock > 0 ? "In Stock" : "Out of Stock"}</span>
-                      </div>
-
-                      <div className="mt-3">
-                        <button
-                          onClick={() => {
-                            handleAddToCart(p.id);
-                            setCurrentView("cart");
-                          }}
-                          className="w-full py-2 bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm hover:scale-[1.01] cursor-pointer"
-                        >
-                          🎁 Buy & Scratch
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="col-span-full py-16 text-center text-slate-500">
-                  <Search className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-                  <p className="text-xs font-medium">No products matching the selected catalog filters.</p>
-                </div>
+                  Reset Filters
+                </button>
               )}
             </div>
+
+            {/* Products grid / Loading / Error / Empty states */}
+            {productsLoading ? (
+              <div>
+                <div className="flex items-center justify-center gap-3 py-8 text-blue-400 font-medium text-sm">
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  Fetching live products catalog from server...
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <div key={n} className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 animate-pulse h-72 flex flex-col justify-between">
+                      <div className="h-36 bg-slate-800/80 rounded-xl" />
+                      <div className="space-y-2 mt-4">
+                        <div className="h-4 bg-slate-800/80 rounded w-3/4" />
+                        <div className="h-3 bg-slate-800/80 rounded w-1/2" />
+                      </div>
+                      <div className="h-8 bg-slate-800/80 rounded-xl mt-4" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : productsError ? (
+              <div className="bg-rose-950/40 border border-rose-800/80 rounded-2xl p-8 text-center my-6">
+                <p className="text-rose-400 font-bold text-sm mb-2">Unable to load products from server</p>
+                <p className="text-slate-400 text-xs mb-4">{productsError}</p>
+                <button
+                  onClick={fetchProducts}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Retry Loading
+                </button>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center my-6">
+                <Search className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                <h4 className="text-slate-200 font-bold text-base mb-1">No products available in database</h4>
+                <p className="text-slate-400 text-xs mb-4">The product catalog is currently empty.</p>
+                <button
+                  onClick={fetchProducts}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Refresh Products
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden hover:border-blue-500/20 transition duration-300 flex flex-col justify-between"
+                  >
+                    <div className="h-44 bg-slate-900 relative overflow-hidden">
+                      <img
+                        src={getProductMainImage(p)}
+                        alt={p.name}
+                        onError={(e) => handleImageError(e, p.name)}
+                        onClick={() => setSelectedProduct(p)}
+                        className="w-full h-full object-cover cursor-pointer hover:scale-102 transition duration-300"
+                      />
+                      <span className="absolute top-2.5 left-2.5 bg-blue-600/90 text-white text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded shadow">
+                        {p.category}
+                      </span>
+                      <button
+                        onClick={() => handleToggleWishlist(p.id)}
+                        className={`absolute top-2.5 right-2.5 p-1.5 rounded-full border border-slate-800 transition cursor-pointer ${
+                          wishlist.includes(p.id) ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-slate-950/80 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Heart className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4
+                          onClick={() => setSelectedProduct(p)}
+                          className="font-bold font-display text-slate-100 text-sm hover:text-blue-400 transition cursor-pointer line-clamp-1"
+                        >
+                          {p.name}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5 uppercase">{p.subCategory}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="flex items-center text-[10px] text-amber-400">
+                            <Star className="h-3 w-3 fill-amber-400 mr-0.5" /> {p.rating}
+                          </span>
+                          <span className="text-[10px] text-slate-500">({p.reviewsCount} reviews)</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-slate-800/40 pt-3">
+                        <div className="flex justify-between items-baseline mb-3">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-md font-bold text-emerald-400 font-mono">₹{p.price}</span>
+                            <span className="text-[10px] text-slate-500 line-through font-mono">₹{p.originalPrice}</span>
+                          </div>
+                          <span className="text-[9px] text-slate-500 font-mono">{p.stock > 0 ? "In Stock" : "Out of Stock"}</span>
+                        </div>
+
+                        <div className="mt-3">
+                          <button
+                            onClick={() => {
+                              handleAddToCart(p.id);
+                              setCurrentView("cart");
+                            }}
+                            className="w-full py-2 bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm hover:scale-[1.01] cursor-pointer"
+                          >
+                            🎁 Buy & Scratch
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredProducts.length === 0 && (
+                  <div className="col-span-full py-16 text-center text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-2xl">
+                    <Search className="h-10 w-10 text-slate-700 mx-auto mb-3" />
+                    <p className="text-slate-300 font-bold text-sm mb-1">No products match your selected filters</p>
+                    <p className="text-xs text-slate-500 mb-4">Try clearing or adjusting your search, category, or price slider.</p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setCategoryFilter("");
+                        setBadgeFilter("");
+                        setPriceFilter(maxPriceLimit);
+                        setSortBy("featured");
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

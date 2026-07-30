@@ -198,10 +198,15 @@ export function loadDB(): DatabaseSchema {
     try {
       const data = fs.readFileSync(DB_FILE, "utf8");
       const parsed = JSON.parse(data) as DatabaseSchema;
+      let migratedSchema = false;
       
-      // Normalize products images if they exist as strings or use old fields
-      if (parsed.products && Array.isArray(parsed.products)) {
-        let migratedAny = false;
+      // Auto-seed products if missing, invalid or empty
+      if (!parsed.products || !Array.isArray(parsed.products) || parsed.products.length === 0) {
+        console.log("[DB] Products missing or empty in db.json. Auto-seeding production products catalog...");
+        parsed.products = createDefaultDB().products;
+        migratedSchema = true;
+      } else {
+        // Normalize products images if they exist as strings or use old fields
         parsed.products = parsed.products.map(p => {
           let imgs: any[] = [];
           
@@ -240,7 +245,7 @@ export function loadDB(): DatabaseSchema {
                   isPrimary: normalized.length === 0,
                   name: `Image ${normalized.length + 1}`
                 });
-                migratedAny = true;
+                migratedSchema = true;
               }
             } else if (img && typeof img === "object" && img.url) {
               if (!uniqueUrls.has(img.url)) {
@@ -256,25 +261,28 @@ export function loadDB(): DatabaseSchema {
             }
           });
 
-          // Check if images is empty or has changed structurally
-          const originalImagesLength = p.images ? p.images.length : 0;
-          const wasStrucutrallyString = p.images && p.images.some((x: any) => typeof x === "string");
-          if (normalized.length !== originalImagesLength || wasStrucutrallyString) {
-            migratedAny = true;
+          if (normalized.length === 0) {
+            normalized.push({
+              type: "url",
+              url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop",
+              isPrimary: true,
+              name: p.name || "Product Image"
+            });
+            migratedSchema = true;
           }
+
+          if (!p.category) p.category = "General";
+          if (!p.subCategory) p.subCategory = "Electronics";
+          if (p.stock === undefined || p.stock === null) p.stock = 15;
+          if (p.rating === undefined || p.rating === null) p.rating = 4.5;
+          if (p.reviewsCount === undefined || p.reviewsCount === null) p.reviewsCount = 0;
+          if (!p.reviewsList) p.reviewsList = [];
           
           p.images = normalized;
           return p;
         });
-
-        // If changes were made, write back to file
-        if (migratedAny) {
-          console.log("[MIGRATION] Migrating legacy product images to ProductImage[] format");
-          saveDB(parsed);
-        }
       }
 
-      let migratedSchema = false;
       if (!parsed.winnerNotifications) {
         parsed.winnerNotifications = [
           { id: "wn_1", userName: "Rahul K.", city: "Hyderabad", rewardType: "cashback", rewardValue: 100, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
@@ -303,7 +311,13 @@ export function loadDB(): DatabaseSchema {
   }
 
   // Create initial DB
-  const defaultDB: DatabaseSchema = {
+  const defaultDB = createDefaultDB();
+  saveDB(defaultDB);
+  return defaultDB;
+}
+
+function createDefaultDB(): DatabaseSchema {
+  return {
     users: [
       {
         id: "usr_admin",
@@ -652,9 +666,6 @@ export function loadDB(): DatabaseSchema {
       autoRemoveOldWinners: true
     }
   };
-
-  saveDB(defaultDB);
-  return defaultDB;
 }
 
 // Global active operations

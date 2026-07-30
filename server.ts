@@ -200,17 +200,33 @@ app.get("/api/auth/me", authMiddleware, (req: AuthRequest, res: Response) => {
 // ==========================================
 
 app.get("/api/products", (req: Request, res: Response) => {
-  const db = loadDB();
-  res.status(200).json(db.products);
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  try {
+    const db = loadDB();
+    const productsList = db.products || [];
+    console.log(`[API /api/products] Returning ${productsList.length} products to client.`);
+    res.status(200).json(productsList);
+  } catch (err: any) {
+    console.error("[API ERROR /api/products] Error fetching products:", err);
+    res.status(500).json({ error: "Failed to fetch products", message: err?.message || "Internal server error" });
+  }
 });
 
 app.get("/api/products/:id", (req: Request, res: Response) => {
-  const db = loadDB();
-  const product = db.products.find(p => p.id === req.params.id);
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  try {
+    const db = loadDB();
+    const product = (db.products || []).find(p => p.id === req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.status(200).json(product);
+  } catch (err: any) {
+    console.error(`[API ERROR /api/products/${req.params.id}] Error:`, err);
+    res.status(500).json({ error: "Failed to fetch product", message: err?.message });
   }
-  res.status(200).json(product);
 });
 
 app.post("/api/products/:id/review", authMiddleware, (req: AuthRequest, res: Response) => {
