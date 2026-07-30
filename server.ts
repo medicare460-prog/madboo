@@ -53,6 +53,25 @@ const PORT = 3000;
 const server = createServer(app);
 let io: SocketIOServer | null = null;
 
+// CORS Middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Request Logging Middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith("/api") || req.path.startsWith("/products")) {
+    console.log(`[HTTP Request Log] ${req.method} ${req.originalUrl} - Host: ${req.headers.host} - User-Agent: ${req.headers["user-agent"] || "unknown"}`);
+  }
+  next();
+});
+
 app.use(express.json({
   verify: (req: any, res, buf) => {
     req.rawBody = buf.toString();
@@ -199,35 +218,43 @@ app.get("/api/auth/me", authMiddleware, (req: AuthRequest, res: Response) => {
 // 2. PRODUCT API
 // ==========================================
 
-app.get("/api/products", (req: Request, res: Response) => {
+const handleGetProducts = (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   try {
     const db = loadDB();
     const productsList = db.products || [];
-    console.log(`[API /api/products] Returning ${productsList.length} products to client.`);
+    console.log(`[API Products] Returning ${productsList.length} products to client via ${req.originalUrl}.`);
     res.status(200).json(productsList);
   } catch (err: any) {
-    console.error("[API ERROR /api/products] Error fetching products:", err);
+    console.error(`[API ERROR ${req.originalUrl}] Error fetching products:`, err);
     res.status(500).json({ error: "Failed to fetch products", message: err?.message || "Internal server error" });
   }
-});
+};
 
-app.get("/api/products/:id", (req: Request, res: Response) => {
+app.get("/api/products", handleGetProducts);
+app.get("/api/products/all", handleGetProducts);
+app.get("/products", handleGetProducts);
+app.get("/api/catalog", handleGetProducts);
+
+const handleGetProductById = (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   try {
     const db = loadDB();
     const product = (db.products || []).find(p => p.id === req.params.id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: `Product with ID '${req.params.id}' not found` });
     }
     res.status(200).json(product);
   } catch (err: any) {
-    console.error(`[API ERROR /api/products/${req.params.id}] Error:`, err);
+    console.error(`[API ERROR ${req.originalUrl}] Error fetching product:`, err);
     res.status(500).json({ error: "Failed to fetch product", message: err?.message });
   }
-});
+};
+
+app.get("/api/products/:id", handleGetProductById);
+app.get("/products/:id", handleGetProductById);
 
 app.post("/api/products/:id/review", authMiddleware, (req: AuthRequest, res: Response) => {
   const { rating, comment } = req.body;
@@ -2116,7 +2143,10 @@ app.post("/api/payment/create-stripe-session", authMiddleware, async (req: AuthR
 
   // 4. Create Stripe checkout Session
   try {
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const reqHost = req.headers.host;
+    const protocol = req.headers["x-forwarded-proto"] || "https";
+    const fallbackOrigin = reqHost ? `${protocol}://${reqHost}` : "http://localhost:3000";
+    const frontendUrl = process.env.APP_URL || process.env.FRONTEND_URL || req.headers.origin || fallbackOrigin;
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [

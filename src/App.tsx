@@ -33,6 +33,7 @@ import ScratchPopup from "./components/ScratchPopup.js";
 import CheckoutPayment from "./components/CheckoutPayment.js";
 import { OrderSuccess } from "./components/OrderSuccess.js";
 import { Product, User, Order, ScratchCard, Transaction, Coupon, Notification, WinnerHistory, getProductMainImage, handleImageError } from "./types.js";
+import { getApiUrl, fetchWithRetry } from "./utils/api.js";
 
 export default function App() {
   // Navigation & View States
@@ -106,7 +107,7 @@ export default function App() {
     setProductsLoading(true);
     setProductsError(null);
     try {
-      const res = await fetch(`/api/products?t=${Date.now()}`);
+      const res = await fetchWithRetry("/api/products");
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
