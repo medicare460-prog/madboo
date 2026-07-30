@@ -1,0 +1,320 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --primary-blue: #2563EB;
+  --secondary-blue: #1D4ED8;
+  --primary-green: #10B981;
+  --secondary-green: #059669;
+
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --border: #CBD5E1;
+  --success: #22C55E;
+  --danger: #EF4444;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Premium Blue and Green Theme Mapping: Override Violet, Purple, Indigo, Magenta, Fuchsia, and Pink */
+  
+  /* Violet overrides mapped to blue spectrum */
+  --color-violet-50: #eff6ff;
+  --color-violet-100: #dbeafe;
+  --color-violet-200: #bfdbfe;
+  --color-violet-300: #93c5fd;
+  --color-violet-400: #60a5fa;
+  --color-violet-500: #3b82f6;
+  --color-violet-600: #2563eb;
+  --color-violet-700: #1d4ed8;
+  --color-violet-800: #1e40af;
+  --color-violet-900: #1e3a8a;
+  --color-violet-950: #172554;
+
+  /* Purple overrides mapped to blue spectrum */
+  --color-purple-50: #eff6ff;
+  --color-purple-100: #dbeafe;
+  --color-purple-200: #bfdbfe;
+  --color-purple-300: #93c5fd;
+  --color-purple-400: #60a5fa;
+  --color-purple-500: #3b82f6;
+  --color-purple-600: #2563eb;
+  --color-purple-700: #1d4ed8;
+  --color-purple-800: #1e40af;
+  --color-purple-900: #1e3a8a;
+  --color-purple-950: #172554;
+
+  /* Indigo overrides mapped to blue spectrum */
+  --color-indigo-50: #eff6ff;
+  --color-indigo-100: #dbeafe;
+  --color-indigo-200: #bfdbfe;
+  --color-indigo-300: #93c5fd;
+  --color-indigo-400: #60a5fa;
+  --color-indigo-500: #3b82f6;
+  --color-indigo-600: #2563eb;
+  --color-indigo-700: #1d4ed8;
+  --color-indigo-800: #1e40af;
+  --color-indigo-900: #1e3a8a;
+  --color-indigo-950: #172554;
+
+  /* Magenta overrides mapped to blue spectrum */
+  --color-magenta-50: #eff6ff;
+  --color-magenta-100: #dbeafe;
+  --color-magenta-200: #bfdbfe;
+  --color-magenta-300: #93c5fd;
+  --color-magenta-400: #60a5fa;
+  --color-magenta-500: #3b82f6;
+  --color-magenta-600: #2563eb;
+  --color-magenta-700: #1d4ed8;
+  --color-magenta-800: #1e40af;
+  --color-magenta-900: #1e3a8a;
+  --color-magenta-950: #172554;
+
+  /* Fuchsia overrides mapped to green spectrum */
+  --color-fuchsia-50: #ecfdf5;
+  --color-fuchsia-100: #d1fae5;
+  --color-fuchsia-200: #a7f3d0;
+  --color-fuchsia-300: #6ee7b7;
+  --color-fuchsia-400: #34d399;
+  --color-fuchsia-500: #10b981;
+  --color-fuchsia-600: #059669;
+  --color-fuchsia-700: #047857;
+  --color-fuchsia-800: #065f46;
+  --color-fuchsia-900: #064e3b;
+  --color-fuchsia-950: #022c22;
+
+  /* Pink overrides mapped to green spectrum */
+  --color-pink-50: #ecfdf5;
+  --color-pink-100: #d1fae5;
+  --color-pink-200: #a7f3d0;
+  --color-pink-300: #6ee7b7;
+  --color-pink-400: #34d399;
+  --color-pink-500: #10b981;
+  --color-pink-600: #059669;
+  --color-pink-700: #047857;
+  --color-pink-800: #065f46;
+  --color-pink-900: #064e3b;
+  --color-pink-950: #022c22;
+
+  /* Blue overrides mapping to Primary Blue and Secondary Blue */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+  --color-blue-950: #172554;
+
+  /* Green and Emerald overrides mapping to Success and Primary Green */
+  --color-green-50: #ecfdf5;
+  --color-green-100: #d1fae5;
+  --color-green-200: #a7f3d0;
+  --color-green-300: #6ee7b7;
+  --color-green-400: #34d399;
+  --color-green-500: #10b981;
+  --color-green-600: #059669;
+  --color-green-700: #047857;
+  --color-green-800: #065f46;
+  --color-green-900: #064e3b;
+  --color-green-950: #022c22;
+
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-emerald-900: #064e3b;
+  --color-emerald-950: #022c22;
+
+  /* Success mapping */
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  
+  /* Danger/Error mapping */
+  --color-red-500: #ef4444;
+  --color-rose-500: #ef4444;
+}
+
+/* Base styles and light theme overrides */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background) !important; /* #F8FAFC */
+  color: var(--text-secondary) !important; /* #475569 */
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  color: var(--text-primary) !important; /* #0F172A */
+}
+
+/* Force specific colors in promo banner and headers to maintain design specs */
+#promo-banner, #promo-banner *, #live-winner-bar, #live-winner-bar * {
+  color: inherit !important;
+}
+
+/* Custom Webkit scrollbar for premium light feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border); /* #CBD5E1 */
+  border-radius: 9999px;
+  border: 2px solid #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Premium Light Cards with Blue/Green Borders mapping */
+.glass-panel {
+  background: var(--surface) !important; /* #FFFFFF */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border) !important; /* #CBD5E1 */
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.03) !important;
+}
+
+.glass-panel-glow {
+  background: var(--surface) !important; /* #FFFFFF */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 2px solid var(--primary-blue) !important; /* #2563EB */
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+/* Background panel replacements for light mode */
+.bg-slate-950 {
+  background-color: var(--background) !important; /* #F8FAFC */
+}
+.bg-slate-900 {
+  background-color: var(--surface) !important; /* #FFFFFF */
+  border-color: var(--border) !important; /* #CBD5E1 */
+}
+.bg-slate-900\/50 {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+}
+.bg-slate-900\/80 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+.bg-slate-950\/80 {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+/* Border overrides */
+.border-slate-800, .border-slate-900, .border-slate-800\/40, .border-slate-800\/60, .border-slate-800\/80 {
+  border-color: var(--border) !important; /* #CBD5E1 */
+}
+
+/* Text overrides for contrast on light mode */
+.text-slate-100:not(button):not(span):not(strong):not(a) {
+  color: var(--text-primary) !important; /* #0F172A */
+}
+.text-slate-200:not(button):not(span):not(strong):not(a) {
+  color: var(--text-primary) !important; /* #0F172A */
+}
+.text-slate-300:not(button):not(span):not(strong):not(a) {
+  color: var(--text-secondary) !important; /* #475569 */
+}
+.text-slate-400:not(button):not(span):not(strong):not(a) {
+  color: var(--text-secondary) !important; /* #475569 */
+}
+.text-slate-500:not(button):not(span):not(strong):not(a) {
+  color: #64748B !important;
+}
+
+/* Ensure buttons and elements with gradients or solid white text keep their white color */
+.bg-gradient-to-r, .bg-violet-600, .bg-blue-600, .bg-green-500, .bg-emerald-500, .text-white-force {
+  color: #FFFFFF !important;
+}
+
+/* Promo Banner slide shine animation */
+@keyframes bannerShine {
+  0% { transform: translateX(-100%); }
+  40%, 100% { transform: translateX(100%); }
+}
+
+.animate-banner-shine {
+  animation: bannerShine 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Scratch card metallic layers */
+.silver-scratch-layer {
+  background: linear-gradient(135deg, #a1a8ba 0%, #cfd5e3 25%, #888f9f 50%, #e2e7f0 75%, #767d8d 100%);
+  background-size: 200% 200%;
+  animation: shine 8s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Sparkle / glow animations mapped to blue-green */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
+  }
+}
+
+.animate-glow {
+  animation: pulseGlow 3s infinite;
+}
+
+/* Floating anim */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Confetti particles */
+@keyframes confettiFall {
+  0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-particle {
+  position: absolute;
+  top: -20px;
+  animation: confettiFall 4s linear forwards;
+}
+
+/* Infinite Marquee for Live Winner Ticker */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--scroll-duration, 25s) linear infinite;
+}

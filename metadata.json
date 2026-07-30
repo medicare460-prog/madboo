@@ -1,0 +1,6 @@
+{
+  "name": "Scratch Rewards",
+  "description": "An premium full-stack eCommerce platform featuring interactive digital scratch card rewards, coin and cashback wallets, real-time winner tickers, and a robust admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
