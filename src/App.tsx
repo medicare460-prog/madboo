@@ -22,7 +22,8 @@ import {
   X,
   Shield,
   Clock,
-  UserCheck
+  UserCheck,
+  ShoppingCart
 } from "lucide-react";
 import Navbar from "./components/Navbar.js";
 import LiveWinnerTicker from "./components/LiveWinnerTicker.js";
@@ -1398,8 +1399,8 @@ export default function App() {
             ) : products.length === 0 ? (
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center my-6">
                 <Search className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                <h4 className="text-slate-200 font-bold text-base mb-1">No products available in database</h4>
-                <p className="text-slate-400 text-xs mb-4">The product catalog is currently empty.</p>
+                <h4 className="text-slate-200 font-bold text-base mb-1">No products available yet.</h4>
+                <p className="text-slate-400 text-xs mb-4">The catalog is currently empty. Add products from the Admin Portal.</p>
                 <button
                   onClick={fetchProducts}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
@@ -1409,73 +1410,114 @@ export default function App() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden hover:border-blue-500/20 transition duration-300 flex flex-col justify-between"
-                  >
-                    <div className="h-44 bg-slate-900 relative overflow-hidden">
-                      <img
-                        src={getProductMainImage(p)}
-                        alt={p.name}
-                        onError={(e) => handleImageError(e, p.name)}
-                        onClick={() => setSelectedProduct(p)}
-                        className="w-full h-full object-cover cursor-pointer hover:scale-102 transition duration-300"
-                      />
-                      <span className="absolute top-2.5 left-2.5 bg-blue-600/90 text-white text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded shadow">
-                        {p.category}
-                      </span>
-                      <button
-                        onClick={() => handleToggleWishlist(p.id)}
-                        className={`absolute top-2.5 right-2.5 p-1.5 rounded-full border border-slate-800 transition cursor-pointer ${
-                          wishlist.includes(p.id) ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-slate-950/80 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <Heart className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                {filteredProducts.map((p) => {
+                  const hasDiscount = p.originalPrice > p.price;
+                  const discountPercent = hasDiscount
+                    ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
+                    : 0;
 
-                    <div className="p-4 flex-1 flex flex-col justify-between">
-                      <div>
-                        <h4
+                  return (
+                    <div
+                      key={p.id}
+                      className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden hover:border-blue-500/20 transition duration-300 flex flex-col justify-between"
+                    >
+                      <div className="h-44 bg-slate-900 relative overflow-hidden">
+                        <img
+                          src={getProductMainImage(p)}
+                          alt={p.name}
+                          onError={(e) => handleImageError(e, p.name)}
                           onClick={() => setSelectedProduct(p)}
-                          className="font-bold font-display text-slate-100 text-sm hover:text-blue-400 transition cursor-pointer line-clamp-1"
-                        >
-                          {p.name}
-                        </h4>
-                        <p className="text-[10px] text-slate-500 font-mono mt-0.5 uppercase">{p.subCategory}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="flex items-center text-[10px] text-amber-400">
-                            <Star className="h-3 w-3 fill-amber-400 mr-0.5" /> {p.rating}
+                          className="w-full h-full object-cover cursor-pointer hover:scale-102 transition duration-300"
+                        />
+                        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+                          <span className="bg-blue-600/90 text-white text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded shadow">
+                            {p.category}
                           </span>
-                          <span className="text-[10px] text-slate-500">({p.reviewsCount} reviews)</span>
+                          {hasDiscount && (
+                            <span className="bg-emerald-600/90 text-white text-[9px] font-mono font-bold tracking-widest uppercase px-2 py-0.5 rounded shadow">
+                              {discountPercent}% OFF
+                            </span>
+                          )}
                         </div>
+                        <button
+                          onClick={() => handleToggleWishlist(p.id)}
+                          className={`absolute top-2.5 right-2.5 p-1.5 rounded-full border border-slate-800 transition cursor-pointer ${
+                            wishlist.includes(p.id) ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-slate-950/80 text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          <Heart className="h-3.5 w-3.5" />
+                        </button>
                       </div>
 
-                      <div className="mt-4 border-t border-slate-800/40 pt-3">
-                        <div className="flex justify-between items-baseline mb-3">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-md font-bold text-emerald-400 font-mono">₹{p.price}</span>
-                            <span className="text-[10px] text-slate-500 line-through font-mono">₹{p.originalPrice}</span>
+                      <div className="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h4
+                            onClick={() => setSelectedProduct(p)}
+                            className="font-bold font-display text-slate-100 text-sm hover:text-blue-400 transition cursor-pointer line-clamp-1"
+                          >
+                            {p.name}
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5 uppercase">{p.subCategory}</p>
+
+                          <p className="text-[11px] text-slate-400 mt-1.5 line-clamp-2 leading-tight">
+                            {p.description}
+                          </p>
+
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            <span className="flex items-center text-[10px] text-amber-400 font-mono">
+                              <Star className="h-3 w-3 fill-amber-400 mr-0.5" /> {p.rating}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">({p.reviewsCount} reviews)</span>
+
+                            <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-semibold">
+                              🎁 Scratch Cashback
+                            </span>
                           </div>
-                          <span className="text-[9px] text-slate-500 font-mono">{p.stock > 0 ? "In Stock" : "Out of Stock"}</span>
                         </div>
 
-                        <div className="mt-3">
-                          <button
-                            onClick={() => {
-                              handleAddToCart(p.id);
-                              setCurrentView("cart");
-                            }}
-                            className="w-full py-2 bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm hover:scale-[1.01] cursor-pointer"
-                          >
-                            🎁 Buy & Scratch
-                          </button>
+                        <div className="mt-4 border-t border-slate-800/40 pt-3">
+                          <div className="flex justify-between items-baseline mb-3">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-md font-bold text-emerald-400 font-mono">₹{p.price}</span>
+                              {hasDiscount && (
+                                <span className="text-[10px] text-slate-500 line-through font-mono">₹{p.originalPrice}</span>
+                              )}
+                            </div>
+                            <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+                              p.stock > 0 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            }`}>
+                              {p.stock > 0 ? `${p.stock} In Stock` : "Out of Stock"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 mt-3">
+                            <button
+                              onClick={() => {
+                                handleAddToCart(p.id);
+                                alert(`"${p.name}" added to cart!`);
+                              }}
+                              disabled={p.stock <= 0}
+                              className="py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
+                            >
+                              <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleAddToCart(p.id);
+                                setCurrentView("cart");
+                              }}
+                              disabled={p.stock <= 0}
+                              className="py-2 bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 transition shadow-sm cursor-pointer"
+                            >
+                              ⚡ Buy Now
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {filteredProducts.length === 0 && (
                   <div className="col-span-full py-16 text-center text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-2xl">
                     <Search className="h-10 w-10 text-slate-700 mx-auto mb-3" />

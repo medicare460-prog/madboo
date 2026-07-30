@@ -203,6 +203,32 @@ app.post("/api/auth/login", (req: Request, res: Response) => {
 });
 
 // Login Alias
+app.post("/api/admin/login", (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "Missing email or password" });
+  }
+
+  const db = loadDB();
+  const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (!user || user.passwordHash !== password) {
+    return res.status(400).json({ message: "Invalid email or password" });
+  }
+
+  res.status(200).json({
+    message: "Login successful",
+    token: user.id,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      coinBalance: user.coinBalance,
+      cashbackBalance: user.cashbackBalance
+    }
+  });
+});
+
 app.post("/api/login", (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {

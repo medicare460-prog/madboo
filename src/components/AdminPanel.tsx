@@ -234,18 +234,39 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!pName.trim()) {
+      alert("Product Name is required.");
+      return;
+    }
+    if (!pDesc.trim()) {
+      alert("Product Description is required.");
+      return;
+    }
+    if (!pPrice || Number(pPrice) <= 0) {
+      alert("Please enter a valid Sale Price greater than 0.");
+      return;
+    }
+    if (pImages.length === 0) {
+      alert("Please upload at least one product image or add an image URL.");
+      return;
+    }
+
+    const priceNum = Number(pPrice);
+    const origPriceNum = pOrigPrice ? Number(pOrigPrice) : priceNum;
+
     const productBody = {
-      name: pName,
-      description: pDesc,
-      price: Number(pPrice),
-      originalPrice: Number(pOrigPrice),
+      name: pName.trim(),
+      description: pDesc.trim(),
+      price: priceNum,
+      originalPrice: origPriceNum >= priceNum ? origPriceNum : priceNum,
       images: pImages,
       category: pCategory,
       subCategory: pSubCategory,
-      stock: Number(pStock),
-      delivery: pDelivery,
-      warranty: pWarranty,
-      seller: pSeller
+      stock: Number(pStock || 0),
+      delivery: pDelivery || "Free Delivery",
+      warranty: pWarranty || "1 Year Standard Warranty",
+      seller: pSeller || "Scratch Authorized Merchant"
     };
 
     const url = isAddMode
@@ -262,13 +283,18 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
         body: JSON.stringify(productBody)
       });
       if (res.ok) {
+        alert(isAddMode ? "Product saved successfully to the production database!" : "Product updated successfully!");
         setIsAddMode(false);
         setEditingProduct(null);
         setPImages([]);
         onRefreshProducts();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Failed to save product: ${errData.message || "Server error"}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save product error:", err);
+      alert(`Error saving product: ${err.message || "Network error"}`);
     }
   };
 

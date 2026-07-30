@@ -1,0 +1,177 @@
+{
+  "users": [
+    {
+      "id": "usr_admin",
+      "email": "admin@scratchrewards.com",
+      "name": "Admin User",
+      "role": "admin",
+      "passwordHash": "admin123",
+      "coinBalance": 500,
+      "cashbackBalance": 100,
+      "createdAt": "2026-07-30T15:24:12.768Z"
+    },
+    {
+      "id": "usr_customer",
+      "email": "customer@scratchrewards.com",
+      "name": "John Doe",
+      "role": "customer",
+      "passwordHash": "customer123",
+      "coinBalance": 250,
+      "cashbackBalance": 25.5,
+      "createdAt": "2026-07-30T15:24:12.768Z"
+    }
+  ],
+  "products": [],
+  "orders": [],
+  "scratchCards": [
+    {
+      "id": "card_welcome",
+      "orderId": "ord_welcome",
+      "userId": "usr_customer",
+      "rewardType": "coins",
+      "rewardValue": 250,
+      "rewardTitle": "250 Welcome Coins",
+      "status": "pending",
+      "purchaseDate": "2026-07-30T15:24:12.768Z",
+      "expiryDate": "2026-08-29T15:24:12.768Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx_1",
+      "userId": "usr_customer",
+      "type": "coins",
+      "amount": 250,
+      "action": "credit",
+      "description": "Welcome Reward bonus",
+      "date": "2026-07-30T15:24:12.768Z"
+    }
+  ],
+  "coupons": [
+    {
+      "code": "WELCOME10",
+      "discountPercent": 10,
+      "minPurchase": 500,
+      "description": "10% off for new registrations. Min purchase ₹500.",
+      "expiryDate": "2027-12-31T23:59:59.000Z",
+      "status": "active"
+    },
+    {
+      "code": "FESTIVE25",
+      "discountPercent": 25,
+      "minPurchase": 2000,
+      "description": "Get flat 25% off during our reward festival! Min purchase ₹2000.",
+      "expiryDate": "2027-12-31T23:59:59.000Z",
+      "status": "active"
+    },
+    {
+      "code": "SUPER50",
+      "discountPercent": 50,
+      "minPurchase": 4000,
+      "description": "Max savings! Get flat 50% off. Min purchase ₹4000.",
+      "expiryDate": "2027-12-31T23:59:59.000Z",
+      "status": "active"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_1",
+      "userId": "usr_customer",
+      "title": "Welcome to Scratch Rewards! 🎉",
+      "message": "You have received a FREE Welcome Scratch Card in your cabinet. Go Scratch it to unlock your first reward!",
+      "date": "2026-07-30T15:24:12.768Z",
+      "isRead": false
+    }
+  ],
+  "winnerHistory": [
+    {
+      "id": "win_1",
+      "name": "Rahul S.",
+      "rewardTitle": "₹100 Cashback",
+      "timestamp": "2026-07-30T15:19:12.768Z"
+    },
+    {
+      "id": "win_2",
+      "name": "Sneha P.",
+      "rewardTitle": "200 Coins",
+      "timestamp": "2026-07-30T15:09:12.768Z"
+    },
+    {
+      "id": "win_3",
+      "name": "Anita K.",
+      "rewardTitle": "Flat 20% Coupon",
+      "timestamp": "2026-07-30T14:52:12.768Z"
+    },
+    {
+      "id": "win_4",
+      "name": "Vikram R.",
+      "rewardTitle": "500 Coins",
+      "timestamp": "2026-07-30T14:36:12.768Z"
+    },
+    {
+      "id": "win_5",
+      "name": "Pooja M.",
+      "rewardTitle": "₹500 Cashback",
+      "timestamp": "2026-07-30T14:12:12.768Z"
+    }
+  ],
+  "winnerNotifications": [
+    {
+      "id": "wn_1",
+      "userName": "Rahul K.",
+      "city": "Hyderabad",
+      "rewardType": "cashback",
+      "rewardValue": 100,
+      "createdAt": "2026-07-30T15:21:12.768Z"
+    },
+    {
+      "id": "wn_2",
+      "userName": "Priya M.",
+      "city": "Chennai",
+      "rewardType": "coins",
+      "rewardValue": 500,
+      "createdAt": "2026-07-30T15:14:12.768Z"
+    },
+    {
+      "id": "wn_3",
+      "userName": "Vikram R.",
+      "city": "Bengaluru",
+      "rewardType": "coupon",
+      "rewardValue": "20%",
+      "createdAt": "2026-07-30T14:59:12.768Z"
+    },
+    {
+      "id": "wn_4",
+      "userName": "Akash P.",
+      "city": "Delhi",
+      "rewardType": "cashback",
+      "rewardValue": 500,
+      "createdAt": "2026-07-30T14:44:12.768Z"
+    },
+    {
+      "id": "wn_5",
+      "userName": "Sneha A.",
+      "city": "Pune",
+      "rewardType": "coins",
+      "rewardValue": 1000,
+      "createdAt": "2026-07-30T14:29:12.768Z"
+    }
+  ],
+  "adminSettings": {
+    "cashbackProb": 35,
+    "coinProb": 35,
+    "couponProb": 15,
+    "betterLuckProb": 5,
+    "mysteryGiftProb": 5,
+    "freeShipProb": 5,
+    "maxDailyRewards": 10,
+    "rewardExpiryDays": 30,
+    "minPurchaseAmount": 100,
+    "oneCardPerOrder": true,
+    "enabledRewards": true,
+    "liveWinnerBarEnabled": true,
+    "winnerScrollSpeed": 25,
+    "maxWinnersToKeep": 50,
+    "autoRemoveOldWinners": true
+  }
+}
