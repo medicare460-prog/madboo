@@ -36,9 +36,8 @@ export interface Product {
 
 export const FALLBACK_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%230f172a'/><g transform='translate(0, 15)'><path d='M170 110 H230 V170 H170 Z' fill='none' stroke='%23334155' stroke-width='4' stroke-linejoin='round'/><path d='M170 150 L195 130 L210 145 L220 135 L230 145' fill='none' stroke='%23334155' stroke-width='4' stroke-linejoin='round'/><circle cx='185' cy='125' r='4' fill='%23334155'/><text x='200' y='210' fill='%2364748b' font-family='sans-serif' font-size='13' font-weight='600' text-anchor='middle'>No Image Available</text></g></svg>";
 
-export function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, productName?: string) {
+export function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, _productName?: string) {
   const img = e.currentTarget;
-  console.warn(`[IMAGE_DEBUG] Failed to load image for product "${productName || 'Unknown'}". URL: ${img.src}`);
   img.src = FALLBACK_IMAGE;
 }
 

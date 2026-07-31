@@ -105,44 +105,39 @@ export default function App() {
   // FETCHERS & INITIALIZERS
   // ==========================================
 
-  const fetchProducts = async (attempt = 0) => {
-    setProductsLoading(true);
-    setProductsError(null);
+  const fetchProducts = async (silent = false) => {
+    if (!silent) {
+      setProductsLoading(true);
+      setProductsError(null);
+    }
     try {
       const res = await fetchWithRetry("/api/products");
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProducts(data);
-          const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
-          const dynamicLimit = Math.max(maxP + 1000, 10000);
-          setMaxPriceLimit(dynamicLimit);
-          setPriceFilter(prev => Math.max(prev, dynamicLimit));
-          setProductsLoading(false);
-          return;
-        } else if (Array.isArray(data)) {
-          setProducts(data);
-          setProductsLoading(false);
+          if (data.length > 0) {
+            const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
+            const dynamicLimit = Math.max(maxP + 1000, 10000);
+            setMaxPriceLimit(dynamicLimit);
+            setPriceFilter(prev => Math.max(prev, dynamicLimit));
+          }
+          if (!silent) setProductsLoading(false);
           return;
         } else {
           console.error("[PROD CATALOG] API returned non-array payload:", data);
-          setProductsError("Received invalid product data format from production server");
+          if (!silent) setProductsError("Received invalid product data format from production server");
         }
       } else {
         const errText = await res.text();
         console.error(`[PROD CATALOG] HTTP ${res.status} error fetching products:`, errText);
-        setProductsError(`Server error HTTP ${res.status}`);
+        if (!silent) setProductsError(`Server error HTTP ${res.status}`);
       }
     } catch (e: any) {
       console.error("[PROD CATALOG] Network error fetching products:", e);
-      if (attempt < 2) {
-        console.log(`[PROD CATALOG] Auto-retrying fetchProducts (Attempt ${attempt + 1})...`);
-        setTimeout(() => fetchProducts(attempt + 1), 800);
-        return;
-      }
-      setProductsError(e?.message || "Failed to load products from production server");
+      if (!silent) setProductsError(e?.message || "Failed to load products from production server");
     } finally {
-      setProductsLoading(false);
+      if (!silent) setProductsLoading(false);
     }
   };
 
@@ -248,14 +243,9 @@ export default function App() {
       if (Array.isArray(updatedProducts) && updatedProducts.length > 0) {
         setProducts(updatedProducts);
       } else {
-        fetchProducts();
+        fetchProducts(true);
       }
     });
-
-    // Background revalidation
-    const interval = setInterval(() => {
-      fetchProducts();
-    }, 12000);
 
     // Auto load session token from local storage
     const storedToken = localStorage.getItem("scratch_user_token");
@@ -266,7 +256,6 @@ export default function App() {
 
     return () => {
       socket.disconnect();
-      clearInterval(interval);
     };
   }, []);
 
