@@ -1,35 +1,16 @@
 // Production-safe API URL Resolver & Fetch Wrapper
 export const getApiUrl = (endpoint: string): string => {
-  const metaEnv = (import.meta as any).env || {};
-  const envBase = (
-    metaEnv.VITE_API_URL ||
-    metaEnv.NEXT_PUBLIC_API_URL ||
-    metaEnv.REACT_APP_API_URL ||
-    metaEnv.API_BASE_URL ||
-    ""
-  ).trim();
-
   const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-
-  if (envBase) {
-    const isProductionBrowser =
-      typeof window !== "undefined" &&
-      window.location &&
-      !window.location.hostname.includes("localhost") &&
-      !window.location.hostname.includes("127.0.0.1");
-
-    if (envBase.includes("localhost") && isProductionBrowser) {
-      console.warn(`[API Utility] Ignoring localhost base URL (${envBase}) on production domain. Using relative endpoint: ${cleanPath}`);
-      return cleanPath;
+  
+  // In the browser, always default to relative paths for same-origin Express API
+  if (typeof window !== "undefined" && window.location) {
+    const metaEnv = (import.meta as any).env || {};
+    const envBase = (metaEnv.VITE_API_URL || "").trim();
+    if (envBase && !envBase.includes("localhost") && !envBase.includes("127.0.0.1") && envBase.startsWith("http")) {
+      const cleanBase = envBase.replace(/\/+$/, "");
+      return `${cleanBase}${cleanPath}`;
     }
-
-    if (typeof window !== "undefined" && window.location.protocol === "https:" && envBase.startsWith("http://")) {
-      console.warn(`[API Utility] Ignoring http base URL (${envBase}) on https page. Using relative endpoint: ${cleanPath}`);
-      return cleanPath;
-    }
-
-    const cleanBase = envBase.replace(/\/+$/, "");
-    return `${cleanBase}${cleanPath}`;
+    return cleanPath;
   }
 
   return cleanPath;
