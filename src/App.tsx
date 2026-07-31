@@ -35,6 +35,7 @@ import CheckoutPayment from "./components/CheckoutPayment.js";
 import { OrderSuccess } from "./components/OrderSuccess.js";
 import { Product, User, Order, ScratchCard, Transaction, Coupon, Notification, WinnerHistory, getProductMainImage, handleImageError } from "./types.js";
 import { getApiUrl, fetchWithRetry } from "./utils/api.js";
+import { INITIAL_PRODUCTS } from "./data/initialProducts.js";
 import { io } from "socket.io-client";
 
 export default function App() {
@@ -113,43 +114,44 @@ export default function App() {
     try {
       const res = await fetchWithRetry("/api/products");
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setProducts(data);
-          if (data.length > 0) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setProducts(data);
             const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
             const dynamicLimit = Math.max(maxP + 1000, 10000);
             setMaxPriceLimit(dynamicLimit);
             setPriceFilter(prev => Math.max(prev, dynamicLimit));
+            if (!silent) setProductsLoading(false);
+            return;
           }
-          if (!silent) setProductsLoading(false);
-          return;
-        } else {
-          console.error("[PROD CATALOG] API returned non-array payload:", data);
-          if (!silent) setProductsError("Received invalid product data format from production server");
         }
-      } else {
-        const errText = await res.text();
-        console.error(`[PROD CATALOG] HTTP ${res.status} error fetching products:`, errText);
-        if (!silent) setProductsError(`Server error HTTP ${res.status}`);
       }
     } catch (e: any) {
-      console.error("[PROD CATALOG] Network error fetching products:", e);
-      if (!silent) setProductsError(e?.message || "Failed to load products from production server");
-    } finally {
-      if (!silent) setProductsLoading(false);
+      console.warn("[PROD CATALOG] API products fetch error:", e?.message);
     }
+
+    // Fallback if API is unreachable or returns static SPA 404 (e.g. standalone static frontend)
+    setProducts(prev => {
+      if (prev && prev.length > 0) return prev;
+      return INITIAL_PRODUCTS;
+    });
+    if (!silent) setProductsLoading(false);
   };
 
   const fetchWinners = async () => {
     try {
       const res = await fetch("/api/winners");
       if (res.ok) {
-        const data = await res.json();
-        setWinners(data);
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const data = await res.json();
+          if (Array.isArray(data)) setWinners(data);
+        }
       }
     } catch (e) {
-      console.error(e);
+      // Ignore
     }
   };
 
@@ -237,7 +239,14 @@ export default function App() {
     fetchWinners();
 
     // Setup Socket.IO for instant live updates across clients when admin updates products
-    const socket = io();
+    const socketUrl = getApiUrl("");
+    const socketOptions = {
+      reconnectionAttempts: 3,
+      reconnectionDelay: 5000,
+      timeout: 5000,
+      transports: ["polling", "websocket"]
+    };
+    const socket = socketUrl ? io(socketUrl, socketOptions) : io(socketOptions);
     socket.on("products_updated", (updatedProducts: Product[]) => {
       console.log("[Socket.IO] Real-time products_updated event received!");
       if (Array.isArray(updatedProducts) && updatedProducts.length > 0) {

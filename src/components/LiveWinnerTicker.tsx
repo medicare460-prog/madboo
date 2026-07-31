@@ -23,19 +23,25 @@ export default function LiveWinnerTicker() {
       // Fetch active public winners
       const res = await fetch("/api/winners");
       if (res.ok) {
-        const data = await res.json();
-        setWinners(data);
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const data = await res.json();
+          if (Array.isArray(data)) setWinners(data);
+        }
       }
 
       // Fetch admin scroll configuration
       const adminRes = await fetch("/api/admin/settings");
       if (adminRes.ok) {
-        const adminSettings = await adminRes.json();
-        setIsEnabled(adminSettings.liveWinnerBarEnabled !== false);
-        setScrollSpeed(adminSettings.winnerScrollSpeed || 25);
+        const contentType = adminRes.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const adminSettings = await adminRes.json();
+          setIsEnabled(adminSettings.liveWinnerBarEnabled !== false);
+          setScrollSpeed(adminSettings.winnerScrollSpeed || 25);
+        }
       }
     } catch (e) {
-      console.error("Live Ticker fetch error:", e);
+      // Ignore network errors silently for live ticker
     }
   };
 
@@ -43,7 +49,13 @@ export default function LiveWinnerTicker() {
     fetchWinnersAndSettings();
 
     // Setup real-time Socket.IO connection
-    const socket = io();
+    const socketOptions = {
+      reconnectionAttempts: 3,
+      reconnectionDelay: 5000,
+      timeout: 5000,
+      transports: ["polling", "websocket"]
+    };
+    const socket = io(socketOptions);
     socketRef.current = socket;
 
     socket.on("new-winner", (newWinner: WinnerNotification) => {
