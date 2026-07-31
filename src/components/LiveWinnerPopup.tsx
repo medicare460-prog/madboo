@@ -31,9 +31,10 @@ export default function LiveWinnerPopup() {
     const fetchWinners = async () => {
       try {
         const res = await fetch("/api/winners");
-        if (res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (res.ok && contentType.includes("json")) {
           const data = await res.json();
-          if (data && data.length > 0) {
+          if (Array.isArray(data) && data.length > 0) {
             setWinners(data);
           }
         }
