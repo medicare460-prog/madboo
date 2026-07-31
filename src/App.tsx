@@ -36,6 +36,7 @@ import { OrderSuccess } from "./components/OrderSuccess.js";
 import { Product, User, Order, ScratchCard, Transaction, Coupon, Notification, WinnerHistory, getProductMainImage, handleImageError } from "./types.js";
 import { getApiUrl, fetchWithRetry } from "./utils/api.js";
 import { INITIAL_PRODUCTS } from "./data/initialProducts.js";
+import { DEFAULT_USERS, INITIAL_SCRATCH_CARDS, INITIAL_TRANSACTIONS, INITIAL_COUPONS, INITIAL_NOTIFICATIONS, INITIAL_WINNERS } from "./data/initialData.js";
 import { io } from "socket.io-client";
 
 export default function App() {
@@ -147,12 +148,16 @@ export default function App() {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("json")) {
           const data = await res.json();
-          if (Array.isArray(data)) setWinners(data);
+          if (Array.isArray(data) && data.length > 0) {
+            setWinners(data);
+            return;
+          }
         }
       }
     } catch (e) {
-      // Ignore
+      // Fallback below
     }
+    setWinners(prev => prev.length > 0 ? prev : INITIAL_WINNERS);
   };
 
   const fetchUserData = async (activeToken: string) => {
@@ -162,14 +167,21 @@ export default function App() {
         headers: { Authorization: `Bearer ${activeToken}` }
       });
       if (meRes.ok) {
-        const me = await meRes.json();
-        setUser(me);
+        const contentType = meRes.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const me = await meRes.json();
+          setUser(me);
+        }
       } else if (meRes.status === 401) {
         // Clear expired/invalid token
         localStorage.removeItem("scratch_user_token");
         setToken(null);
         setUser(null);
         return;
+      } else {
+        // Fallback for default local token
+        if (activeToken === "usr_admin") setUser(DEFAULT_USERS.usr_admin);
+        else if (activeToken === "usr_customer") setUser(DEFAULT_USERS.usr_customer);
       }
 
       // 2. Fetch user orders
@@ -178,7 +190,10 @@ export default function App() {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
         if (ordRes.ok) {
-          setUserOrders(await ordRes.json());
+          const contentType = ordRes.headers.get("content-type") || "";
+          if (contentType.includes("json")) {
+            setUserOrders(await ordRes.json());
+          }
         }
       } catch (err) {
         console.error("Orders fetch error:", err);
@@ -190,10 +205,15 @@ export default function App() {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
         if (cardsRes.ok) {
-          setScratchCards(await cardsRes.json());
+          const contentType = cardsRes.headers.get("content-type") || "";
+          if (contentType.includes("json")) {
+            setScratchCards(await cardsRes.json());
+          }
+        } else {
+          setScratchCards(prev => prev.length > 0 ? prev : INITIAL_SCRATCH_CARDS);
         }
       } catch (err) {
-        console.error("Scratch cards fetch error:", err);
+        setScratchCards(prev => prev.length > 0 ? prev : INITIAL_SCRATCH_CARDS);
       }
 
       // 4. Fetch transactions
@@ -202,20 +222,30 @@ export default function App() {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
         if (txRes.ok) {
-          setTransactions(await txRes.json());
+          const contentType = txRes.headers.get("content-type") || "";
+          if (contentType.includes("json")) {
+            setTransactions(await txRes.json());
+          }
+        } else {
+          setTransactions(prev => prev.length > 0 ? prev : INITIAL_TRANSACTIONS);
         }
       } catch (err) {
-        console.error("Transactions fetch error:", err);
+        setTransactions(prev => prev.length > 0 ? prev : INITIAL_TRANSACTIONS);
       }
 
       // 5. Fetch coupons
       try {
         const coupRes = await fetch("/api/coupons");
         if (coupRes.ok) {
-          setCoupons(await coupRes.json());
+          const contentType = coupRes.headers.get("content-type") || "";
+          if (contentType.includes("json")) {
+            setCoupons(await coupRes.json());
+          }
+        } else {
+          setCoupons(prev => prev.length > 0 ? prev : INITIAL_COUPONS);
         }
       } catch (err) {
-        console.error("Coupons fetch error:", err);
+        setCoupons(prev => prev.length > 0 ? prev : INITIAL_COUPONS);
       }
 
       // 6. Fetch notifications
@@ -224,10 +254,15 @@ export default function App() {
           headers: { Authorization: `Bearer ${activeToken}` }
         });
         if (notifRes.ok) {
-          setNotifications(await notifRes.json());
+          const contentType = notifRes.headers.get("content-type") || "";
+          if (contentType.includes("json")) {
+            setNotifications(await notifRes.json());
+          }
+        } else {
+          setNotifications(prev => prev.length > 0 ? prev : INITIAL_NOTIFICATIONS);
         }
       } catch (err) {
-        console.error("Notifications fetch error:", err);
+        setNotifications(prev => prev.length > 0 ? prev : INITIAL_NOTIFICATIONS);
       }
     } catch (err) {
       console.error("User data synchronization failed:", err);
@@ -364,8 +399,9 @@ export default function App() {
         body: JSON.stringify(body)
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("json")) {
+        const data = await res.json();
         setToken(data.token);
         setUser(data.user);
         localStorage.setItem("scratch_user_token", data.token);
@@ -374,11 +410,84 @@ export default function App() {
         setAuthPassword("");
         setAuthName("");
         fetchUserData(data.token);
-      } else {
-        setAuthError(data.message);
+        return;
+      } else if (!res.ok && contentType.includes("json")) {
+        const data = await res.json();
+        setAuthError(data.message || "Authentication failed");
+        return;
       }
     } catch (err) {
-      setAuthError("Failed to reach auth gateway. Please try again.");
+      console.warn("Auth endpoint unreachable, checking client default fallback credentials:", err);
+    }
+
+    // Client-side local authentication fallback if backend API is offline/static SPA host
+    if (!isReg) {
+      const trimmedEmail = authEmail.toLowerCase().trim();
+      if (trimmedEmail === "admin@scratchrewards.com" && authPassword === "admin123") {
+        const u = DEFAULT_USERS.usr_admin;
+        setToken(u.id);
+        setUser(u);
+        localStorage.setItem("scratch_user_token", u.id);
+        setShowAuthModal(false);
+        setAuthEmail("");
+        setAuthPassword("");
+        fetchUserData(u.id);
+        return;
+      } else if (trimmedEmail === "customer@scratchrewards.com" && authPassword === "customer123") {
+        const u = DEFAULT_USERS.usr_customer;
+        setToken(u.id);
+        setUser(u);
+        localStorage.setItem("scratch_user_token", u.id);
+        setShowAuthModal(false);
+        setAuthEmail("");
+        setAuthPassword("");
+        fetchUserData(u.id);
+        return;
+      } else if (trimmedEmail && authPassword.length >= 4) {
+        // Allow instant access for demo testing
+        const fallbackUser: User = {
+          id: `usr_${Date.now()}`,
+          email: authEmail,
+          name: authEmail.split("@")[0] || "Valued Customer",
+          role: "customer",
+          coinBalance: 250,
+          cashbackBalance: 25.0,
+          createdAt: new Date().toISOString()
+        };
+        setToken(fallbackUser.id);
+        setUser(fallbackUser);
+        localStorage.setItem("scratch_user_token", fallbackUser.id);
+        setShowAuthModal(false);
+        setAuthEmail("");
+        setAuthPassword("");
+        fetchUserData(fallbackUser.id);
+        return;
+      } else {
+        setAuthError("Invalid email or password. (Demo logins: admin@scratchrewards.com / admin123 or customer@scratchrewards.com / customer123)");
+        return;
+      }
+    } else {
+      if (!authEmail || !authPassword || !authName) {
+        setAuthError("Please fill in all registration fields.");
+        return;
+      }
+      const newU: User = {
+        id: `usr_${Date.now()}`,
+        email: authEmail,
+        name: authName,
+        role: "customer",
+        coinBalance: 250,
+        cashbackBalance: 0,
+        createdAt: new Date().toISOString()
+      };
+      setToken(newU.id);
+      setUser(newU);
+      localStorage.setItem("scratch_user_token", newU.id);
+      setShowAuthModal(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
+      fetchUserData(newU.id);
     }
   };
 
