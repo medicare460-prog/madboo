@@ -1,5 +1,25 @@
-import fs from "fs";
+import { initializeApp, getApps } from "firebase/app";
+import { initializeFirestore, collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import path from "path";
+import fs from "fs";
+
+// Load Firebase configuration
+let config: any = {};
+try {
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(configPath)) {
+    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  }
+} catch (e) {
+  console.error("[Firestore Init Error] Failed to read firebase-applet-config.json:", e);
+}
+
+const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
+export const firestore = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true
+}, config.firestoreDatabaseId);
+
+console.log(`[Firestore Setup] Initialized Firestore with Project: ${config.projectId}, Database ID: ${config.firestoreDatabaseId}`);
 
 // Types definition
 export interface Review {
@@ -41,7 +61,7 @@ export interface User {
   email: string;
   name: string;
   role: "admin" | "customer";
-  passwordHash: string; // Plain password check for simplicity and robustness in this app
+  passwordHash: string;
   coinBalance: number;
   cashbackBalance: number;
   createdAt: string;
@@ -57,8 +77,8 @@ export interface ScratchCard {
   orderId: string;
   userId: string;
   rewardType: "cashback" | "coins" | "coupon" | "free_shipping" | "mystery_gift" | "better_luck";
-  rewardValue: string | number; // e.g. 100 for cashback/coins, "FREESHIP" or "SCRATCH30" for coupons
-  rewardTitle: string; // e.g. "₹100 Cashback", "500 Coins", "Flat 30% Coupon"
+  rewardValue: string | number;
+  rewardTitle: string;
   status: "pending" | "claimed" | "expired";
   purchaseDate: string;
   scratchedAt?: string;
@@ -140,12 +160,12 @@ export interface WinnerHistory {
 }
 
 export interface AdminSettings {
-  cashbackProb: number; // 0-100
-  coinProb: number;     // 0-100
-  couponProb: number;   // 0-100
-  betterLuckProb: number; // 0-100
-  mysteryGiftProb: number; // 0-100
-  freeShipProb: number;  // 0-100
+  cashbackProb: number;
+  coinProb: number;
+  couponProb: number;
+  betterLuckProb: number;
+  mysteryGiftProb: number;
+  freeShipProb: number;
   maxDailyRewards: number;
   rewardExpiryDays: number;
   minPurchaseAmount: number;
@@ -181,139 +201,7 @@ export interface DatabaseSchema {
   adminSettings: AdminSettings;
 }
 
-const DB_FILE = path.join(process.cwd(), "db.json");
-
-// Helper to save DB
-function saveDB(data: DatabaseSchema) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch (error) {
-    console.error("Error writing to database file:", error);
-  }
-}
-
-// Helper to load DB and seed if empty
-export function loadDB(): DatabaseSchema {
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const data = fs.readFileSync(DB_FILE, "utf8");
-      const parsed = JSON.parse(data) as DatabaseSchema;
-      let migratedSchema = false;
-      
-      // Ensure products is an array
-      if (!parsed.products || !Array.isArray(parsed.products)) {
-        parsed.products = [];
-        migratedSchema = true;
-      } else {
-        // Normalize products images if they exist as strings or use old fields
-        parsed.products = parsed.products.map(p => {
-          let imgs: any[] = [];
-          
-          // 1. Collect all images from various possible fields
-          if (p.images && Array.isArray(p.images)) {
-            imgs = [...p.images];
-          } else if ((p as any).images && typeof (p as any).images === "string") {
-            imgs = [(p as any).images];
-          }
-          
-          if ((p as any).image) {
-            imgs.push((p as any).image);
-          }
-          if ((p as any).imageUrl) {
-            imgs.push((p as any).imageUrl);
-          }
-          if ((p as any).thumbnail) {
-            imgs.push((p as any).thumbnail);
-          }
-          if ((p as any).gallery && Array.isArray((p as any).gallery)) {
-            imgs.push(...(p as any).gallery);
-          }
-          
-          // Deduplicate and map to standard ProductImage format
-          const uniqueUrls = new Set<string>();
-          const normalized: ProductImage[] = [];
-          
-          imgs.forEach((img: any) => {
-            if (!img) return;
-            if (typeof img === "string") {
-              if (!uniqueUrls.has(img)) {
-                uniqueUrls.add(img);
-                normalized.push({
-                  type: "url" as const,
-                  url: img,
-                  isPrimary: normalized.length === 0,
-                  name: `Image ${normalized.length + 1}`
-                });
-                migratedSchema = true;
-              }
-            } else if (img && typeof img === "object" && img.url) {
-              if (!uniqueUrls.has(img.url)) {
-                uniqueUrls.add(img.url);
-                normalized.push({
-                  type: img.type || "url",
-                  url: img.url,
-                  isPrimary: img.isPrimary !== undefined ? img.isPrimary : (normalized.length === 0),
-                  name: img.name || `Image ${normalized.length + 1}`,
-                  size: img.size
-                });
-              }
-            }
-          });
-
-          if (normalized.length === 0) {
-            normalized.push({
-              type: "url",
-              url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop",
-              isPrimary: true,
-              name: p.name || "Product Image"
-            });
-            migratedSchema = true;
-          }
-
-          if (!p.category) p.category = "General";
-          if (!p.subCategory) p.subCategory = "Electronics";
-          if (p.stock === undefined || p.stock === null) p.stock = 15;
-          if (p.rating === undefined || p.rating === null) p.rating = 4.5;
-          if (p.reviewsCount === undefined || p.reviewsCount === null) p.reviewsCount = 0;
-          if (!p.reviewsList) p.reviewsList = [];
-          
-          p.images = normalized;
-          return p;
-        });
-      }
-
-      if (!parsed.winnerNotifications) {
-        parsed.winnerNotifications = [
-          { id: "wn_1", userName: "Rahul K.", city: "Hyderabad", rewardType: "cashback", rewardValue: 100, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
-          { id: "wn_2", userName: "Priya M.", city: "Chennai", rewardType: "coins", rewardValue: 500, createdAt: new Date(Date.now() - 10 * 60000).toISOString() },
-          { id: "wn_3", userName: "Vikram R.", city: "Bengaluru", rewardType: "coupon", rewardValue: "20%", createdAt: new Date(Date.now() - 25 * 60000).toISOString() },
-          { id: "wn_4", userName: "Akash P.", city: "Delhi", rewardType: "cashback", rewardValue: 500, createdAt: new Date(Date.now() - 40 * 60000).toISOString() },
-          { id: "wn_5", userName: "Sneha A.", city: "Pune", rewardType: "coins", rewardValue: 1000, createdAt: new Date(Date.now() - 55 * 60000).toISOString() }
-        ];
-        migratedSchema = true;
-      }
-      if (parsed.adminSettings && parsed.adminSettings.liveWinnerBarEnabled === undefined) {
-        parsed.adminSettings.liveWinnerBarEnabled = true;
-        parsed.adminSettings.winnerScrollSpeed = 25;
-        parsed.adminSettings.maxWinnersToKeep = 50;
-        parsed.adminSettings.autoRemoveOldWinners = true;
-        migratedSchema = true;
-      }
-      if (migratedSchema) {
-        saveDB(parsed);
-      }
-      return parsed;
-
-    } catch (e) {
-      console.error("Error reading database file, rebuilding...", e);
-    }
-  }
-
-  // Create initial DB
-  const defaultDB = createDefaultDB();
-  saveDB(defaultDB);
-  return defaultDB;
-}
+let cachedDB: DatabaseSchema = createDefaultDB();
 
 function createDefaultDB(): DatabaseSchema {
   return {
@@ -597,9 +485,138 @@ function createDefaultDB(): DatabaseSchema {
   };
 }
 
-// Global active operations
+// Sync function to seed or read initial state from Firestore
+export async function syncWithFirestore(): Promise<void> {
+  try {
+    console.log("[Firestore Sync] Connecting to production Firestore database...");
+    const productsSnap = await getDocs(collection(firestore, "products"));
+    
+    if (productsSnap.empty) {
+      console.log("[Firestore Seed] Products collection empty. Seeding default products to Firestore production database...");
+      const defaultData = createDefaultDB();
+      for (const p of defaultData.products) {
+        await setDoc(doc(firestore, "products", p.id), p);
+      }
+      await setDoc(doc(firestore, "app_data", "state"), {
+        users: defaultData.users,
+        orders: defaultData.orders,
+        scratchCards: defaultData.scratchCards,
+        transactions: defaultData.transactions,
+        coupons: defaultData.coupons,
+        notifications: defaultData.notifications,
+        winnerHistory: defaultData.winnerHistory,
+        winnerNotifications: defaultData.winnerNotifications,
+        adminSettings: defaultData.adminSettings
+      });
+      cachedDB = defaultData;
+      console.log("[Firestore Seed] Default seed to Firestore completed successfully.");
+    } else {
+      const fetchedProducts: Product[] = [];
+      productsSnap.forEach(d => {
+        fetchedProducts.push(d.data() as Product);
+      });
+      
+      const stateSnap = await getDoc(doc(firestore, "app_data", "state"));
+      if (stateSnap.exists()) {
+        const stateData = stateSnap.data() || {};
+        cachedDB = {
+          products: fetchedProducts,
+          users: stateData.users || createDefaultDB().users,
+          orders: stateData.orders || [],
+          scratchCards: stateData.scratchCards || [],
+          transactions: stateData.transactions || [],
+          coupons: stateData.coupons || [],
+          notifications: stateData.notifications || [],
+          winnerHistory: stateData.winnerHistory || [],
+          winnerNotifications: stateData.winnerNotifications || [],
+          adminSettings: stateData.adminSettings || createDefaultDB().adminSettings
+        };
+      } else {
+        cachedDB.products = fetchedProducts;
+      }
+      console.log(`[GET /api/products] GET /api/products returns the latest records (${fetchedProducts.length} items from production Firestore database).`);
+    }
+  } catch (err) {
+    console.error("[Firestore Sync Error] Failed to sync with Firestore:", err);
+  }
+}
+
+// Initial async sync trigger
+syncWithFirestore().catch(err => console.error("[Firestore Init Error]", err));
+
+// Direct Firestore Operations for Products
+export async function getProductsFromFirestore(): Promise<Product[]> {
+  try {
+    const snap = await getDocs(collection(firestore, "products"));
+    if (snap.empty) {
+      console.log("[Firestore GET Products] Collection empty, seeding default products...");
+      await syncWithFirestore();
+      return cachedDB.products;
+    }
+    const products: Product[] = [];
+    snap.forEach(d => {
+      products.push(d.data() as Product);
+    });
+    cachedDB.products = products;
+    console.log(`[GET /api/products] GET /api/products returns the latest records (${products.length} records fetched from Firestore production database).`);
+    return products;
+  } catch (err) {
+    console.error("[Firestore GET Products Error]", err);
+    return cachedDB.products || [];
+  }
+}
+
+export async function saveProductToFirestore(product: Product): Promise<void> {
+  console.log(`[Product inserted/updated] Saving product ID '${product.id}' ('${product.name}') to production Firestore database...`);
+  try {
+    await setDoc(doc(firestore, "products", product.id), product);
+    console.log(`[Product inserted/updated] Product ID '${product.id}' successfully saved to production Firestore database.`);
+    
+    const idx = cachedDB.products.findIndex(p => p.id === product.id);
+    if (idx !== -1) {
+      cachedDB.products[idx] = product;
+    } else {
+      cachedDB.products.push(product);
+    }
+  } catch (err) {
+    console.error(`[Firestore Save Error] Failed to save product '${product.id}' to Firestore:`, err);
+    throw err;
+  }
+}
+
+export async function deleteProductFromFirestore(productId: string): Promise<boolean> {
+  console.log(`[Product deleted] Deleting product ID '${productId}' from production Firestore database...`);
+  try {
+    await deleteDoc(doc(firestore, "products", productId));
+    console.log(`[Product deleted] Product ID '${productId}' successfully deleted from production Firestore database.`);
+    
+    cachedDB.products = cachedDB.products.filter(p => p.id !== productId);
+    return true;
+  } catch (err) {
+    console.error(`[Firestore Delete Error] Failed to delete product '${productId}' from Firestore:`, err);
+    throw err;
+  }
+}
+
+// Synchronous loadDB fallback for in-memory access
+export function loadDB(): DatabaseSchema {
+  return cachedDB;
+}
+
+// Global active operations update
 export function updateDB(updater: (db: DatabaseSchema) => void) {
-  const db = loadDB();
-  updater(db);
-  saveDB(db);
+  updater(cachedDB);
+  
+  // Asynchronously sync state doc to Firestore
+  setDoc(doc(firestore, "app_data", "state"), {
+    users: cachedDB.users,
+    orders: cachedDB.orders,
+    scratchCards: cachedDB.scratchCards,
+    transactions: cachedDB.transactions,
+    coupons: cachedDB.coupons,
+    notifications: cachedDB.notifications,
+    winnerHistory: cachedDB.winnerHistory,
+    winnerNotifications: cachedDB.winnerNotifications,
+    adminSettings: cachedDB.adminSettings
+  }).catch(err => console.error("[Firestore Async State Save Error]", err));
 }

@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "E-commerce product entity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "subCategory": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "stock": { "type": "number" },
+        "delivery": { "type": "string" },
+        "warranty": { "type": "string" },
+        "seller": { "type": "string" }
+      },
+      "required": ["id", "name", "price", "stock"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Collection of all e-commerce products"
+    }
+  }
+}

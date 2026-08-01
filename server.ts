@@ -9,7 +9,7 @@ import Razorpay from "razorpay";
 import Stripe from "stripe";
 import crypto from "crypto";
 import mongoose from "mongoose";
-import { loadDB, updateDB, Product, User, Order, ScratchCard, Transaction, Coupon, WinnerHistory, Notification, AdminSettings } from "./server/db.js";
+import { loadDB, updateDB, getProductsFromFirestore, saveProductToFirestore, deleteProductFromFirestore, Product, User, Order, ScratchCard, Transaction, Coupon, WinnerHistory, Notification, AdminSettings } from "./server/db.js";
 import { OrderModel, PaymentModel, ScratchCardModel } from "./server/models.js";
 
 // Ensure initial database is loaded/created
@@ -293,17 +293,16 @@ app.get("/api/auth/me", authMiddleware, (req: AuthRequest, res: Response) => {
 // 2. PRODUCT API
 // ==========================================
 
-const handleGetProducts = (req: Request, res: Response) => {
+const handleGetProducts = async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   try {
-    const db = loadDB();
-    const productsList = db.products || [];
-    console.log(`[API Products] Returning ${productsList.length} products to client via ${req.originalUrl}.`);
+    const productsList = await getProductsFromFirestore();
+    console.log(`[API Products GET] Returning ${productsList.length} products directly from production Firestore database to client via ${req.originalUrl}.`);
     res.status(200).json(productsList);
   } catch (err: any) {
-    console.error(`[API ERROR ${req.originalUrl}] Error fetching products:`, err);
+    console.error(`[API ERROR ${req.originalUrl}] Error fetching products from Firestore:`, err);
     res.status(500).json({ error: "Failed to fetch products", message: err?.message || "Internal server error" });
   }
 };
@@ -313,11 +312,11 @@ app.get("/api/products/all", handleGetProducts);
 app.get("/products", handleGetProducts);
 app.get("/api/catalog", handleGetProducts);
 
-const handleGetProductById = (req: Request, res: Response) => {
+const handleGetProductById = async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   try {
-    const db = loadDB();
-    const product = (db.products || []).find(p => p.id === req.params.id);
+    const productsList = await getProductsFromFirestore();
+    const product = (productsList || []).find(p => p.id === req.params.id);
     if (!product) {
       return res.status(404).json({ message: `Product with ID '${req.params.id}' not found` });
     }
@@ -1218,13 +1217,13 @@ app.get("/api/admin/products", (req: Request, res: Response) => {
   handleGetProducts(req, res);
 });
 
-function notifyProductsChanged() {
+async function notifyProductsChanged() {
   try {
-    const db = loadDB();
+    const products = await getProductsFromFirestore();
     const activeIo = io || (global as any).io;
     if (activeIo) {
-      console.log("[Socket.IO] Broadcasting products_updated event to all connected clients. Total products:", db.products?.length || 0);
-      activeIo.emit("products_updated", db.products || []);
+      console.log("[Socket.IO] Broadcasting products_updated event to all connected clients. Total products:", products.length);
+      activeIo.emit("products_updated", products);
     } else {
       console.warn("[Socket.IO] Warning: io instance is null, could not broadcast products_updated.");
     }
@@ -1233,7 +1232,7 @@ function notifyProductsChanged() {
   }
 }
 
-const handleAddProduct = (req: Request, res: Response) => {
+const handleAddProduct = async (req: Request, res: Response) => {
   const productData = req.body;
   console.log("[API Add Product] Request body payload:", JSON.stringify(productData));
 
@@ -1298,14 +1297,16 @@ const handleAddProduct = (req: Request, res: Response) => {
     specifications: productData.specifications || {}
   };
 
+  await saveProductToFirestore(newProduct);
   updateDB(db => {
     if (!db.products) db.products = [];
+    db.products = db.products.filter(p => p.id !== newProduct.id);
     db.products.push(newProduct);
   });
 
-  console.log(`[API Add Product] Product successfully added to DB with ID: ${newProduct.id}`);
+  console.log(`[Product inserted] Product '${newProduct.name}' inserted into production Firestore database with ID: ${newProduct.id}`);
 
-  notifyProductsChanged();
+  await notifyProductsChanged();
 
   res.status(201).json({ message: "Product created successfully", product: newProduct });
 };
@@ -1313,7 +1314,7 @@ const handleAddProduct = (req: Request, res: Response) => {
 app.post("/api/admin/products/add", adminMiddleware, handleAddProduct);
 app.post("/api/products", authMiddleware, handleAddProduct);
 
-const handleEditProduct = (req: Request, res: Response) => {
+const handleEditProduct = async (req: Request, res: Response) => {
   const productId = req.params.id;
   const productData = req.body;
   console.log(`[API Edit Product] Request for ID: ${productId}. Payload:`, JSON.stringify(productData));
@@ -1322,7 +1323,15 @@ const handleEditProduct = (req: Request, res: Response) => {
     return res.status(400).json({ message: "Product ID parameter is required." });
   }
 
-  let images: Product["images"] = [];
+  const currentProducts = await getProductsFromFirestore();
+  const existingProduct = currentProducts.find(p => p.id === productId);
+
+  if (!existingProduct) {
+    console.error(`[API Edit Product Error] Product ID '${productId}' not found in database.`);
+    return res.status(404).json({ message: `Product with ID '${productId}' not found in database.` });
+  }
+
+  let images: Product["images"] = existingProduct.images || [];
   if (Array.isArray(productData.images)) {
     images = productData.images.map((img: any, idx: number) => {
       if (typeof img === "string") {
@@ -1343,49 +1352,30 @@ const handleEditProduct = (req: Request, res: Response) => {
     });
   }
 
-  if (images.length === 0) {
-    images = [{
-      type: "url" as const,
-      url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=600&auto=format&fit=crop",
-      isPrimary: true,
-      name: "Default Product Image"
-    }];
-  } else {
-    const hasPrimary = images.some(img => img.isPrimary);
-    if (!hasPrimary) {
-      images[0].isPrimary = true;
-    }
-  }
+  const updatedProduct: Product = {
+    ...existingProduct,
+    ...productData,
+    id: productId,
+    price: Number(productData.price ?? existingProduct.price),
+    originalPrice: Number(productData.originalPrice ?? existingProduct.originalPrice),
+    stock: Number(productData.stock ?? existingProduct.stock),
+    images
+  };
 
-  let updatedProduct: Product | null = null;
-  let found = false;
-
+  await saveProductToFirestore(updatedProduct);
   updateDB(db => {
     if (!db.products) db.products = [];
     const idx = db.products.findIndex(p => p.id === productId);
     if (idx !== -1) {
-      found = true;
-      db.products[idx] = {
-        ...db.products[idx],
-        ...productData,
-        id: productId, // Preserve ID
-        price: Number(productData.price ?? db.products[idx].price),
-        originalPrice: Number(productData.originalPrice ?? db.products[idx].originalPrice),
-        stock: Number(productData.stock ?? db.products[idx].stock),
-        images
-      };
-      updatedProduct = db.products[idx];
+      db.products[idx] = updatedProduct;
+    } else {
+      db.products.push(updatedProduct);
     }
   });
 
-  if (!found) {
-    console.error(`[API Edit Product Error] Product ID '${productId}' not found in database.`);
-    return res.status(404).json({ message: `Product with ID '${productId}' not found in database.` });
-  }
+  console.log(`[Product updated] Product ID '${productId}' updated in production Firestore database. State:`, JSON.stringify(updatedProduct));
 
-  console.log(`[API Edit Product] Successfully updated product ID ${productId}. State:`, JSON.stringify(updatedProduct));
-
-  notifyProductsChanged();
+  await notifyProductsChanged();
 
   res.status(200).json({ message: "Product updated successfully", product: updatedProduct });
 };
@@ -1394,28 +1384,27 @@ app.post("/api/admin/products/edit/:id", adminMiddleware, handleEditProduct);
 app.put("/api/products/:id", authMiddleware, handleEditProduct);
 app.post("/api/products/edit/:id", authMiddleware, handleEditProduct);
 
-const handleDeleteProduct = (req: Request, res: Response) => {
+const handleDeleteProduct = async (req: Request, res: Response) => {
   const productId = req.params.id;
   console.log(`[API Delete Product] Delete request for ID: ${productId}`);
 
-  let deleted = false;
-  updateDB(db => {
-    if (!db.products) db.products = [];
-    const initialCount = db.products.length;
-    db.products = db.products.filter(p => p.id !== productId);
-    if (db.products.length < initialCount) {
-      deleted = true;
-    }
-  });
+  const currentProducts = await getProductsFromFirestore();
+  const exists = currentProducts.some(p => p.id === productId);
 
-  if (!deleted) {
+  if (!exists) {
     console.error(`[API Delete Product Error] Product ID '${productId}' not found in database.`);
     return res.status(404).json({ message: `Product with ID '${productId}' not found in database.` });
   }
 
-  console.log(`[API Delete Product] Product ID '${productId}' successfully deleted from database.`);
+  await deleteProductFromFirestore(productId);
+  updateDB(db => {
+    if (!db.products) db.products = [];
+    db.products = db.products.filter(p => p.id !== productId);
+  });
 
-  notifyProductsChanged();
+  console.log(`[Product deleted] Product ID '${productId}' deleted from production Firestore database.`);
+
+  await notifyProductsChanged();
 
   res.status(200).json({ message: "Product deleted successfully" });
 };
