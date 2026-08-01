@@ -1221,9 +1221,12 @@ app.get("/api/admin/products", (req: Request, res: Response) => {
 function notifyProductsChanged() {
   try {
     const db = loadDB();
-    if ((global as any).io) {
-      console.log("[Socket.IO] Broadcasting products_updated event to all connected clients...");
-      (global as any).io.emit("products_updated", db.products || []);
+    const activeIo = io || (global as any).io;
+    if (activeIo) {
+      console.log("[Socket.IO] Broadcasting products_updated event to all connected clients. Total products:", db.products?.length || 0);
+      activeIo.emit("products_updated", db.products || []);
+    } else {
+      console.warn("[Socket.IO] Warning: io instance is null, could not broadcast products_updated.");
     }
   } catch (err) {
     console.error("[Socket.IO] Error broadcasting products update:", err);
@@ -1232,7 +1235,15 @@ function notifyProductsChanged() {
 
 const handleAddProduct = (req: Request, res: Response) => {
   const productData = req.body;
-  
+  console.log("[API Add Product] Request body payload:", JSON.stringify(productData));
+
+  if (!productData || !productData.name || !productData.name.trim()) {
+    return res.status(400).json({ message: "Product name is required." });
+  }
+  if (productData.price === undefined || productData.price === null || isNaN(Number(productData.price)) || Number(productData.price) <= 0) {
+    return res.status(400).json({ message: "Valid positive product price is required." });
+  }
+
   let images: Product["images"] = [];
   if (Array.isArray(productData.images)) {
     images = productData.images.map((img: any, idx: number) => {
@@ -1269,18 +1280,18 @@ const handleAddProduct = (req: Request, res: Response) => {
   }
 
   const newProduct: Product = {
-    id: "prod_" + Math.random().toString(36).substring(2, 11),
-    name: productData.name,
-    description: productData.description,
+    id: productData.id || "prod_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+    name: productData.name.trim(),
+    description: productData.description || "",
     price: Number(productData.price),
-    originalPrice: Number(productData.originalPrice),
+    originalPrice: Number(productData.originalPrice || productData.price),
     images,
     category: productData.category || "General",
     subCategory: productData.subCategory || "Electronics",
     rating: 5.0,
     reviewsCount: 0,
     reviewsList: [],
-    stock: Number(productData.stock || 10),
+    stock: Number(productData.stock ?? 10),
     delivery: productData.delivery || "Free Delivery",
     warranty: productData.warranty || "1 Year Warranty",
     seller: productData.seller || "Certified Merchant",
@@ -1288,8 +1299,11 @@ const handleAddProduct = (req: Request, res: Response) => {
   };
 
   updateDB(db => {
+    if (!db.products) db.products = [];
     db.products.push(newProduct);
   });
+
+  console.log(`[API Add Product] Product successfully added to DB with ID: ${newProduct.id}`);
 
   notifyProductsChanged();
 
@@ -1302,6 +1316,11 @@ app.post("/api/products", authMiddleware, handleAddProduct);
 const handleEditProduct = (req: Request, res: Response) => {
   const productId = req.params.id;
   const productData = req.body;
+  console.log(`[API Edit Product] Request for ID: ${productId}. Payload:`, JSON.stringify(productData));
+
+  if (!productId) {
+    return res.status(400).json({ message: "Product ID parameter is required." });
+  }
 
   let images: Product["images"] = [];
   if (Array.isArray(productData.images)) {
@@ -1338,23 +1357,37 @@ const handleEditProduct = (req: Request, res: Response) => {
     }
   }
 
+  let updatedProduct: Product | null = null;
+  let found = false;
+
   updateDB(db => {
+    if (!db.products) db.products = [];
     const idx = db.products.findIndex(p => p.id === productId);
     if (idx !== -1) {
+      found = true;
       db.products[idx] = {
         ...db.products[idx],
         ...productData,
-        price: Number(productData.price),
-        originalPrice: Number(productData.originalPrice),
-        stock: Number(productData.stock),
+        id: productId, // Preserve ID
+        price: Number(productData.price ?? db.products[idx].price),
+        originalPrice: Number(productData.originalPrice ?? db.products[idx].originalPrice),
+        stock: Number(productData.stock ?? db.products[idx].stock),
         images
       };
+      updatedProduct = db.products[idx];
     }
   });
 
+  if (!found) {
+    console.error(`[API Edit Product Error] Product ID '${productId}' not found in database.`);
+    return res.status(404).json({ message: `Product with ID '${productId}' not found in database.` });
+  }
+
+  console.log(`[API Edit Product] Successfully updated product ID ${productId}. State:`, JSON.stringify(updatedProduct));
+
   notifyProductsChanged();
 
-  res.status(200).json({ message: "Product updated successfully" });
+  res.status(200).json({ message: "Product updated successfully", product: updatedProduct });
 };
 
 app.post("/api/admin/products/edit/:id", adminMiddleware, handleEditProduct);
@@ -1363,9 +1396,24 @@ app.post("/api/products/edit/:id", authMiddleware, handleEditProduct);
 
 const handleDeleteProduct = (req: Request, res: Response) => {
   const productId = req.params.id;
+  console.log(`[API Delete Product] Delete request for ID: ${productId}`);
+
+  let deleted = false;
   updateDB(db => {
+    if (!db.products) db.products = [];
+    const initialCount = db.products.length;
     db.products = db.products.filter(p => p.id !== productId);
+    if (db.products.length < initialCount) {
+      deleted = true;
+    }
   });
+
+  if (!deleted) {
+    console.error(`[API Delete Product Error] Product ID '${productId}' not found in database.`);
+    return res.status(404).json({ message: `Product with ID '${productId}' not found in database.` });
+  }
+
+  console.log(`[API Delete Product] Product ID '${productId}' successfully deleted from database.`);
 
   notifyProductsChanged();
 

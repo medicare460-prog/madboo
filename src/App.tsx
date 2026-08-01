@@ -118,12 +118,14 @@ export default function App() {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("json")) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             setProducts(data);
-            const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
-            const dynamicLimit = Math.max(maxP + 1000, 10000);
-            setMaxPriceLimit(dynamicLimit);
-            setPriceFilter(prev => Math.max(prev, dynamicLimit));
+            if (data.length > 0) {
+              const maxP = data.reduce((max: number, p: Product) => Math.max(max, p.price || 0), 5000);
+              const dynamicLimit = Math.max(maxP + 1000, 10000);
+              setMaxPriceLimit(dynamicLimit);
+              setPriceFilter(prev => Math.max(prev, dynamicLimit));
+            }
             if (!silent) setProductsLoading(false);
             return;
           }

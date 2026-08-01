@@ -24,6 +24,17 @@ export const fetchWithRetry = async (
   const primaryUrl = getApiUrl(endpoint);
   let lastError: any = null;
 
+  const mergedHeaders: Record<string, string> = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    ...(options?.headers as Record<string, string> || {})
+  };
+
+  const reqOptions: RequestInit = {
+    ...options,
+    headers: mergedHeaders
+  };
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const urlToFetch =
@@ -36,7 +47,7 @@ export const fetchWithRetry = async (
       if (attempt > 0) {
         console.warn(`[API Fetch Retry] Attempt ${attempt + 1}/${maxRetries}: ${options?.method || "GET"} ${urlToFetch}`);
       }
-      const res = await fetch(urlToFetch, options);
+      const res = await fetch(urlToFetch, reqOptions);
 
       if (res.ok) {
         const contentType = res.headers.get("content-type") || "";

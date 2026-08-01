@@ -176,17 +176,27 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
     try {
       const res = await fetchWithRetry(`/api/admin/products/delete/${id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
+      const contentType = res.headers.get("content-type") || "";
       if (res.ok) {
+        alert("Product deleted successfully!");
         onRefreshProducts();
+      } else {
+        let errMsg = `HTTP Error ${res.status}`;
+        if (contentType.includes("json")) {
+          const data = await res.json().catch(() => ({}));
+          errMsg = data.message || errMsg;
+        }
+        alert(`Failed to delete product: ${errMsg}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delete product error:", err);
+      alert(`Error deleting product: ${err?.message || "Network error"}`);
     }
   };
 
@@ -215,9 +225,9 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
     });
     setPImages(loadedImages);
     
-    setPWarranty(prod.warranty);
-    setPDelivery(prod.delivery);
-    setPSeller(prod.seller);
+    setPWarranty(prod.warranty || "1 Year Standard Warranty");
+    setPDelivery(prod.delivery || "Free Delivery");
+    setPSeller(prod.seller || "Scratch Authorized Partner");
   };
 
   const handleOpenAddProduct = () => {
@@ -277,6 +287,8 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
       ? "/api/admin/products/add"
       : `/api/admin/products/edit/${editingProduct?.id}`;
 
+    console.log(`[AdminPanel] Saving product. Mode: ${isAddMode ? "ADD" : "EDIT"}. ID: ${editingProduct?.id || "NEW"}. Body:`, productBody);
+
     try {
       const res = await fetchWithRetry(url, {
         method: "POST",
@@ -286,25 +298,41 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
         },
         body: JSON.stringify(productBody)
       });
+
       const contentType = res.headers.get("content-type") || "";
-      if (res.ok && contentType.includes("json")) {
-        alert(isAddMode ? "Product saved successfully to the production database!" : "Product updated successfully!");
+      if (res.ok) {
+        let responseData: any = {};
+        if (contentType.includes("json")) {
+          responseData = await res.json().catch(() => ({}));
+        }
+        console.log(`[AdminPanel] Product save successful. Server response:`, responseData);
+        alert(isAddMode ? "Product created successfully!" : "Product updated successfully!");
         setIsAddMode(false);
         setEditingProduct(null);
         setPImages([]);
         onRefreshProducts();
         return;
+      } else {
+        let errorMessage = `HTTP ${res.status}`;
+        if (contentType.includes("json")) {
+          const errData = await res.json().catch(() => ({}));
+          errorMessage = errData.message || errorMessage;
+        } else {
+          const errTxt = await res.text().catch(() => "");
+          if (errTxt) errorMessage = errTxt;
+        }
+        console.error(`[AdminPanel] Product save failed (HTTP ${res.status}): ${errorMessage}`);
+        alert(`Failed to ${isAddMode ? "create" : "update"} product: ${errorMessage}`);
+        return;
       }
     } catch (err: any) {
-      console.warn("Save product API endpoint unavailable, updating local session:", err);
+      console.warn("[AdminPanel] Product save API unreachable (Network Error). Updating locally:", err);
+      alert(isAddMode ? "Product saved successfully!" : "Product updated successfully!");
+      setIsAddMode(false);
+      setEditingProduct(null);
+      setPImages([]);
+      onRefreshProducts();
     }
-
-    // Local catalog update fallback for static hosts / Vercel
-    alert(isAddMode ? "Product saved successfully!" : "Product updated successfully!");
-    setIsAddMode(false);
-    setEditingProduct(null);
-    setPImages([]);
-    onRefreshProducts();
   };
 
   // Image Manager Helpers
@@ -389,7 +417,6 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
         const uploaded: ProductImage[] = data.files;
 
         if (replaceIndex !== undefined && replaceIndex !== null) {
-          // Replace single image
           const updated = [...pImages];
           const wasPrimary = updated[replaceIndex].isPrimary;
           updated[replaceIndex] = {
@@ -399,7 +426,6 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
           setPImages(updated);
           setReplacingIndex(null);
         } else {
-          // Append multiple images
           const withPrimaryCheck = uploaded.map((img, idx) => ({
             ...img,
             isPrimary: pImages.length === 0 && idx === 0
@@ -407,12 +433,23 @@ export default function AdminPanel({ token, onRefreshProducts, products }: Admin
           setPImages([...pImages, ...withPrimaryCheck]);
         }
         return;
+      } else if (!res.ok && res.status !== 404) {
+        // Explicit server rejection (e.g. HTTP 400 or 500)
+        let errMsg = `HTTP Error ${res.status}`;
+        if (contentType.includes("json")) {
+          const errData = await res.json().catch(() => ({}));
+          errMsg = errData.message || errMsg;
+        }
+        alert(`Image upload failed: ${errMsg}`);
+        return;
       }
     } catch (err) {
-      console.warn("[AdminPanel] /api/admin/upload network/endpoint error, falling back to local base64 reader:", err);
+      console.warn("[AdminPanel] /api/admin/upload network error, falling back to local base64 reader:", err);
+    } finally {
+      setUploading(false);
     }
 
-    // Fallback: Read selected image files as Data URLs locally if upload endpoint is unreachable/static SPA
+    // Fallback: Read selected image files as Data URLs locally if upload endpoint is unreachable or 404
     try {
       const fileArray: File[] = Array.from(files);
       const readPromises = fileArray.map((file: File) => {
